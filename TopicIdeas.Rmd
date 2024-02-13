@@ -5,6 +5,10 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 # Business: Online Retail Data
 
 This Online Retail II data set contains all the transactions occurring for a UK-based and registered, non-store online retail between 01/12/2009 and 09/12/2011.The company mainly sells unique all-occasion gift-ware. Many customers of the company are wholesalers.
@@ -39,6 +43,93 @@ This Online Retail II data set contains all the transactions occurring for a UK-
   
 
 ## Exploratory Data Analysis
+
+```{r, echo = FALSE, include=FALSE}
+rm(list=ls())
+#install.packages("tidyverse")
+#install.packages("tidyr")
+#install.packages("dplyr")
+
+library(readxl)
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+
+```
+
+``` {r, echo = FALSE}
+file_path = "../Data/online_retail_II.xlsx"
+online_retail_data = as_tibble(read_excel(file_path))
+```
+
+There are 4631 unique gift-ware items, the top 20 selling items are as shown below. Gift ware with stock code 85123A was the highest selling item. Across the 2 year period, there was a total of 28816 sales across 4384 wholesalers, about 5229 sales(invoices) do not have associated customers. 
+
+```{r, echo=FALSE}
+# Explore the number of unique gift-sets and their popularity
+
+
+gift_purchase_count = online_retail_data %>% 
+                      group_by(StockCode) %>%
+                      summarise(total = n())
+              
+
+top_20_selling_gifts = gift_purchase_count %>%
+                       arrange(desc(total)) %>%
+                       head(n = 20)  
+
+invoice_per_wholesaler = online_retail_data %>% 
+                       group_by(Invoice, `Customer ID`) %>%
+                       summarise(items_on_invoice = n(), .groups = 'drop')
+
+invoices_without_customerIDs = invoice_per_wholesaler %>%
+                              filter(is.na(`Customer ID`))
+
+total_customers = unique(online_retail_data$`Customer ID`)
+  
+#highest_selling_items_percentage = top_20_selling_gifts$total[1]/count(online_retail_data)*100
+
+
+# Plot the bar chart
+ggplot(top_20_selling_gifts, aes(x = reorder(StockCode, -total), y = total, fill = StockCode)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Top 20 Gift-Wares Sold", x = "Stock Code", y = "Total Sold") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rotate x-axis labels for readability
+
+```
+
+The top wholesales
+
+```{r, echo = FALSE}
+
+customer_stats = online_retail_data %>% 
+                 group_by(`Customer ID`) %>%
+                 summarise(
+                   totalInvoices = n_distinct(Invoice),
+                   totalItems = n(),
+                   totalValue = sum(Price)
+                 ) %>%
+                arrange(desc(totalValue)) %>%
+                head(n=20)
+
+na_customer_stats = online_retail_data %>% 
+                 group_by(`Customer ID`) %>%
+                 summarise(
+                   totalInvoices = n_distinct(Invoice),
+                   totalItems = n(),
+                   totalValue = sum(Price)
+                 ) %>%
+                arrange(desc(totalValue)) %>%
+                filter(is.na(`Customer ID`))
+               # head(n=20)
+
+kable(customer_stats)
+top_wholesaler_revenue_contribution = customer_stats$totalValue[1]/sum(customer_stats$totalValue)*100
+  
+```
+
+As seen in the table, it's worrying that the top performing wholesaler is unknown as they contribute to about 71.78% of the total revenue generated over the 2 year period. This might be one or more different wholesalers.
 
 # Business: Default of credit card clients
 
