@@ -9,6 +9,12 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
+\newpage
+
+We are tasked to perform topic idea analysis. The aim is to obtain 2-3 sets of data, from a specific application area. Using these data sets we will describe a research question and perform various explorartory data analysis techniques. Upon completion of the above analysis, one data set will be selected in order to implement and analysis various multivariate statistics techniques within the application area of the said data set.
+
+For this analysis we will be analysing 3 data within the following app
+
 # Business: Online Retail Data
 
 This Online Retail II data set contains all the transactions occurring for a UK-based and registered, non-store online retail between 01/12/2009 and 09/12/2011.The company mainly sells unique all-occasion gift-ware. Many customers of the company are wholesalers.
@@ -28,7 +34,7 @@ This Online Retail II data set contains all the transactions occurring for a UK-
 
     - Are the factors that contribute to possible customer churns ?
   
-[//]: # Customner Segementation
+[//]: # Customner Segmentation
 3. **Can wholesalers be grouped into various customer segements based on their purchasing patterns ?**
 
     - What are the trends of top wholesalers, how can they be targeted more effectively ?
@@ -46,9 +52,6 @@ This Online Retail II data set contains all the transactions occurring for a UK-
 
 ```{r, echo = FALSE, include=FALSE}
 rm(list=ls())
-#install.packages("tidyverse")
-#install.packages("tidyr")
-#install.packages("dplyr")
 
 library(readxl)
 library(tidyverse)
@@ -68,16 +71,18 @@ There are 4631 unique gift-ware items, the top 20 selling items are as shown bel
 ```{r, echo=FALSE}
 # Explore the number of unique gift-sets and their popularity
 
+# Total count of each item sold
 
-gift_purchase_count = online_retail_data %>% 
-                      group_by(StockCode) %>%
-                      summarise(total = n())
+gift_purchase_total_sold = online_retail_data %>% 
+                         group_by(StockCode) %>%
+                         summarise(`Total Sold` = sum(Quantity))
+                      
               
 
-top_20_selling_gifts = gift_purchase_count %>%
-                       arrange(desc(total)) %>%
+top_20_selling_gifts = gift_purchase_total_sold %>%
+                       arrange(desc(`Total Sold`)) %>%
                        head(n = 20)  
-
+  
 invoice_per_wholesaler = online_retail_data %>% 
                        group_by(Invoice, `Customer ID`) %>%
                        summarise(items_on_invoice = n(), .groups = 'drop')
@@ -86,46 +91,81 @@ invoices_without_customerIDs = invoice_per_wholesaler %>%
                               filter(is.na(`Customer ID`))
 
 total_customers = unique(online_retail_data$`Customer ID`)
+
   
 #highest_selling_items_percentage = top_20_selling_gifts$total[1]/count(online_retail_data)*100
 
 
 # Plot the bar chart
-ggplot(top_20_selling_gifts, aes(x = reorder(StockCode, -total), y = total, fill = StockCode)) +
-  geom_bar(stat = "identity") +
+ggplot(top_20_selling_gifts, aes(x = `Total Sold` , y =  reorder(StockCode, `Total Sold`), fill = StockCode)) +
+  geom_bar(stat = "identity", fill = "brown") +
   theme_minimal() +
-  labs(title = "Top 20 Gift-Wares Sold", x = "Stock Code", y = "Total Sold") +
+  labs(title = "Top 20 Giftwares Sold", x = "Total Sold", y = "Stock Code") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rotate x-axis labels for readability
+
+top_20_selling_gifts$StockCode[]
+
+top_product_name = online_retail_data %>%
+                   filter(StockCode == top_20_selling_gifts$StockCode[1]) %>%
+                   select(Description) %>%
+                   distinct(Description)
+
 
 ```
 
-The top wholesales
+The top wholesalers
 
 ```{r, echo = FALSE}
 
+unique_customers = online_retail_data %>%
+                   distinct(`Customer ID`)
+
+customer_country_distribution = online_retail_data %>%
+                                  distinct(`Customer ID`, .keep_all = TRUE) %>%
+                                  group_by(Country) %>%
+                                  summarise(`Total Customers` = n()) %>%
+                                  arrange(desc(`Total Customers`)) %>%
+                                  head(n=5)
+
+ggplot(customer_country_distribution, aes(x = `Total Customers` , y =  reorder(`Country`, `Total Customers`), fill = `Country`)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Customer Regions", x = "Total Customers", y = "Country") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rotate x-axis labels for readability                          
+                                  
 customer_stats = online_retail_data %>% 
                  group_by(`Customer ID`) %>%
                  summarise(
-                   totalInvoices = n_distinct(Invoice),
-                   totalItems = n(),
-                   totalValue = sum(Price)
+                   `Total Invoices` = n_distinct(Invoice),
+                   `Total Units Purchased` = sum(Quantity),
+                   `Total Spend` = sum(Quantity * Price),
                  ) %>%
-                arrange(desc(totalValue)) %>%
+                arrange(desc(`Total Spend`)) %>%
                 head(n=20)
 
 na_customer_stats = online_retail_data %>% 
                  group_by(`Customer ID`) %>%
                  summarise(
-                   totalInvoices = n_distinct(Invoice),
-                   totalItems = n(),
-                   totalValue = sum(Price)
+                   `Total Invoices` = n_distinct(Invoice),
+                   `Total Units Purchased` = sum(Quantity),
+                    `Total Spend` = sum(Quantity * Price),
                  ) %>%
-                arrange(desc(totalValue)) %>%
+                arrange(desc(`Total Spend`)) %>%
                 filter(is.na(`Customer ID`))
                # head(n=20)
 
+customer_stats$`Customer ID`[1] = "Unknown"
+
 kable(customer_stats)
-top_wholesaler_revenue_contribution = customer_stats$totalValue[1]/sum(customer_stats$totalValue)*100
+top_wholesaler_revenue_contribution = customer_stats$`Total Spend`[1]/sum(customer_stats$`Total Spend`)*100
+
+# Plot the bar chart
+ggplot(customer_stats, aes(x = `Total Spend` , y =  reorder(`Customer ID`, `Total Spend`), fill = `Customer ID`)) +
+  geom_bar(stat = "identity", fill = "#FF8C00") +
+  theme_minimal() +
+  labs(title = "Top 20 Revenue Generating Customers", x = "Revenue Generated", y = "Customer Id") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rotate x-axis labels for readability
+ 
   
 ```
 
@@ -137,11 +177,23 @@ This dataset provides an in-depth look at the profitability of e-commerce sales.
 
 
 ```{r}
+rm(list=ls())
+
+library(readxl)
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+
 file_path = "../Data/Assignment/Amazon Sale Report.csv"
 amazon_sales_report = as_tibble(read_csv(file_path))
 ```
 
 # Research Questions
+For the Amazon sales report data, we wish to explore which the various customer profiles 
+\beging{itemize}
+  \item W
+\end{itemize}
 - Customer Segementation, what are various customer profiles
 - Product Recommendation: Which products can be recommended together ?
 - What are the top predictors for a sale to be fulfilled ?
@@ -264,17 +316,27 @@ X6 - X11: History of past payment. We tracked the past monthly payment records (
 X12-X17: Amount of bill statement (NT dollar). X12 = amount of bill statement in September, 2005; X13 = amount of bill statement in August, 2005; . . .; X17 = amount of bill statement in April, 2005. 
 X18-X23: Amount of previous payment (NT dollar). X18 = amount paid in September, 2005; X19 = amount paid in August, 2005; . . .;X23 = amount paid in April, 2005.
 
+https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients
+
 ## Research Questions
+
+For our second data set we wish to explore what factors are more likely to effect a customer default e.g are younger customers more likely to default then older clients. With this ability the bank would be able to more effectively cluster various customer risk profiles.
 
 1. Probability of customer defaulting
 
 2. What other factors are more likely to effect a customer defaulting i.e do younger customers default more then older clients ? 
 
 ## Exploratory Data Analysis
-https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients
+
 
 ```{r, echo = FALSE}
 rm(list = ls())
+library(readxl)
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+
 file_path = "../Data/Assignment/default of credit card clients.xls"
 
 credit_default_data = as_tibble(read_xls(file_path))
@@ -311,6 +373,16 @@ female_average_credit_limit = credit_default_data |>
                             as.numeric() |>
                             mean()
 
+minimum = min(limit_balances)
+first_quantile = quantile(limit_balances, 0.25)
+median_point = quantile(limit_balances, 0.50)
+third_quantile = quantile(limit_balances, 0.75)
+maximum = max(limit_balances)
+
+ggplot(credit_default_data, aes(x="", y=limit_balances)) +
+  geom_boxplot(fill="lightblue", color="black") +
+  labs(title="Credit Limit Five Number Summary", x="", y="Credit Limit") +
+  theme_minimal()
 ```
 
 - The average credit limit amount is 167484.32
@@ -321,19 +393,22 @@ female_average_credit_limit = credit_default_data |>
 
 ```{r, echo = FALSE}
 credit_spending = credit_default_data %>%
-                  select(LIMIT_BAL, BILL_AMT6) %>%
+                  select(LIMIT_BAL, BILL_AMT1) %>%
                   mutate(across(everything(), as.numeric)) %>%
-                  mutate(`Total Outstanding` = if_else(BILL_AMT6 == 0, 0, LIMIT_BAL - BILL_AMT6)) %>%
+                  mutate(`Credit Utilization` = BILL_AMT1) %>%
                   ungroup()
-                  
-ggplot(credit_spending, aes(x = `Total Outstanding`)) +
-  geom_histogram(binwidth = 50000, # Adjust binwidth based on your data's distribution and scale
-                 fill = "blue", color = "black") +
-  labs(title = "Histogram of Total Outstanding",
-       x = "Total Outstanding",
+credit_spending = credit_spending %>%
+                  mutate(`Percentage Utilized`= round((`Credit Utilization`/LIMIT_BAL)*100,2))
+
+
+ggplot(credit_spending, aes(x = `Percentage Utilized`)) +
+  geom_histogram(aes(y=..density..),binwidth = 5, # Adjust binwidth based on your data's distribution and scale
+                 fill = "steelblue", color = "black") +
+  xlim(0, 200)+
+  labs(title = "Distribution of Credit Utilization",
+       x = "Credit Utilization (%)",
        y = "# of Customers") +
   theme_minimal() 
-
 
 ```
 
@@ -347,62 +422,23 @@ client_payments = credit_default_data %>%
                   mutate(`Total Payments` = sum(c_across(PAY_AMT1:PAY_AMT6), na.rm = TRUE)) %>%
                   ungroup()
 
+
+outstanding_and_paid = data.frame(credit_spending$LIMIT_BAL, credit_spending$`Credit Utilization`, client_payments$`Total Payments`) |> 
+  as.tibble()
+
+colnames(outstanding_and_paid) = c("LIMIT_BAL", "Total Outstanding", "Total Payments")
+outstanding_and_paid = outstanding_and_paid %>%
+                       mutate(`Percentage Paid` = round((`Total Payments`/`Total Outstanding`)*100,2))
+
+category =c("Total Outstanding", "Total Payments")
+
 ggplot(client_payments, aes(x = `Total Payments`)) +
   geom_histogram(binwidth = 50000, # Adjust binwidth based on your data's distribution and scale
                  fill = "blue", color = "black") +
   labs(title = "Histogram of Total Payments",
-       x = "Total Payments",
-       y = "# of Customers") +
-  theme_minimal() 
-
-outstanding_and_paid = data.frame(credit_spending$LIMIT_BAL, credit_spending$`Total Outstanding`, client_payments$`Total Payments`) |> 
-  as.tibble()
-
-colnames(outstanding_and_paid) = c("LIMIT_BAL", "Total Outstanding", "Total Payments")
-category =c("Total Outstanding", "Total Payments")
-
-
-ggplot(client_payments, aes(x = `Total Payments`)) +
-  geom_histogram(binwidth = 50000, # Adjust binwidth based on your data's distribution and scale
-                 fill = "blue", color = "black") +
-  labs(title = "Histogram of Total Outstanding",
-       x = "Total Outstanding",
+       x = "Total Paymebts",
        y = "# of Customers") +
   theme_minimal() 
 ```
 - Above we show the distribution of the credit utilization from April to Septemner. It's right skewed indicating that most clients tend to use a small portion of their allocoated credit limit
-# Education: Student Performance Dataset
 
-[//]: # https://www.kaggle.com/datasets/devansodariya/student-performance-data
-
-Student Performance Data was obtained in a survey of students' math course in secondary school.
-It consists of 33 Column
-Dataset Contains Features like
-
-- school ID
-- gender
-- age
-- size of family
-- Father education
-- Mother education
-- Occupation of Father and Mother
-- Family Relation
-- Health
-- Grades
-- This dataset can be used for Regression (as target variable Grade) as well as Analysis tasks. it might contain imbalanced category features.
-
-
-
-## Research Question
-
-1. What top factors contribute to students performing well ?
-2. How do male students perform in relation to female students?
-
-## Exploratory Data Analysis
-
-```{r, echo= FALSE}
-rm(list = ls())
-file_path = "../Data/Assignment/student_data.csv"
-online_retail_data = as_tibble(read_csv(file_path))
-
-```
