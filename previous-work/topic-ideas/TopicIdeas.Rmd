@@ -337,7 +337,7 @@ library(knitr)
 library(ggplot2)
 library(dplyr)
 
-file_path = "../Data/Assignment/default of credit card clients.xls"
+file_path = "../../../Data/Assignment/default of credit card clients.xls"
 
 credit_default_data = as_tibble(read_xls(file_path))
 
@@ -442,3 +442,36 @@ ggplot(client_payments, aes(x = `Total Payments`)) +
 ```
 - Above we show the distribution of the credit utilization from April to Septemner. It's right skewed indicating that most clients tend to use a small portion of their allocoated credit limit
 
+## Response Variable Anaylysi
+
+```{r, echo = FALSE}
+
+response_variable = as.numeric(credit_default_data$`default payment next month`) %>%
+                    as.tibble() %>%
+                    rename(., Class = value)
+
+
+default_yes = response_variable %>%
+              filter(Class == 1)
+
+
+default_no =  response_variable %>%
+              filter(Class == 0)
+
+agg_data = response_variable %>%
+           group_by(Class) %>%
+           summarise(Count = n()) %>%
+           mutate(Percentage = Count /sum(Count) *100)
+
+percentage_yes = nrow(default_yes)/nrow(credit_default_data) *100
+percentage_no = nrow(default_no)/nrow(credit_default_data) *100  
+
+ggplot(agg_data, aes(x = factor(Class, labels = c("No", "Yes")), y = Count, fill = factor(Class, labels = c("No", "Yes")))) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), vjust = -0.5) +
+  labs(x = "Default payment next month", y = "Number of Clients", title = "Class Distribution") +
+  scale_fill_manual(values = c("No" = "green", "Yes" = "red")) +  # Customize bar colors
+  theme_minimal()+
+  theme(legend.position = "none")  # Remove the legend
+
+```

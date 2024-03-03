@@ -10,6 +10,7 @@ file_path = "../Data/Assignment/default of credit card clients.xls"
 # Credit Limit Analysis
 
 credit_default_data = as_tibble(read_xls(file_path))
+head(credit_default_data)
 
 colnames(credit_default_data) = as.character(credit_default_data[1, ])
 
