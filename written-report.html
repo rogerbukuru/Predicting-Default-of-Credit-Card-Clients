@@ -13,7 +13,7 @@
 
 <meta name="date" content="2024-03-10" />
 
-<title>written-report</title>
+<title>Predicting default of credit card clients</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,36 +350,86 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">written-report</h1>
+<h1 class="title toc-ignore">Predicting default of credit card
+clients</h1>
 <h4 class="author">Roger Bukuru</h4>
 <h4 class="date">2024-03-10</h4>
 
 </div>
 
+<div id="TOC">
+<ul>
+<li><a href="#import-data" id="toc-import-data"><span class="toc-section-number">1</span> Import Data</a></li>
+<li><a href="#introduction" id="toc-introduction"><span class="toc-section-number">2</span> Introduction</a></li>
+<li><a href="#exploratory-data-analysis" id="toc-exploratory-data-analysis"><span class="toc-section-number">3</span> Exploratory Data Analysis</a>
+<ul>
+<li><a href="#feature-analysis" id="toc-feature-analysis"><span class="toc-section-number">3.1</span> Feature Analysis</a></li>
+<li><a href="#data-cleaning" id="toc-data-cleaning"><span class="toc-section-number">3.2</span> Data Cleaning</a></li>
+<li><a href="#feature-selection" id="toc-feature-selection"><span class="toc-section-number">3.3</span> Feature Selection</a></li>
+<li><a href="#feature-extraction" id="toc-feature-extraction"><span class="toc-section-number">3.4</span> Feature Extraction</a></li>
+</ul></li>
+<li><a href="#model-engineering" id="toc-model-engineering"><span class="toc-section-number">4</span> Model Engineering</a></li>
+<li><a href="#model-evaluation" id="toc-model-evaluation"><span class="toc-section-number">5</span> Model Evaluation</a></li>
+</ul>
+</div>
 
-<div id="import-data" class="section level1">
-<h1>Import Data</h1>
+<div id="import-data" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> Import Data</h1>
 </div>
-<div id="exploratory-data-analysis" class="section level1">
-<h1>Exploratory Data Analysis</h1>
-<div id="feature-analysis" class="section level2">
-<h2>Feature Analysis</h2>
+<div id="introduction" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> Introduction</h1>
+<p>One of the many functions of a bank is the ability to provide its
+customers with loans or credit facilities. These channels provide banks
+with the opportunity to generate additional revenues by means of gaining
+interest off the back of these financial instruments. </p>
+<p>However these instruments have an intrinsic risk once awarded to a
+customer, customers may default in their repayments of such loans or
+credit facilities. In this research, we will focus on credit card
+facilities, specifically credit card clients in Taiwan. We will be
+exploring the probability of clients defaulting on their credit card
+facility given a set of features such as their demographic information
+(like gender, education, marital status, and age) to financial behaviors
+(including payment history, bill statement amounts, and previous payment
+amounts). The exploration will aim to provide statistical techniques to
+better manage credit risk default. Credit risk here means, the
+probability of a delay in the repayment of the credit granted. </p>
+<p>Furthermore, we aim to explore given the above-mentioned features,
+which features/factors are more likely to affect a customer defaulting
+e.g. are younger customers more likely to default than older clients,
+and given these factors what is the probability of a customer
+defaulting? This will be done by exploring established techniques such
+as employing customer risk segmentation by conducting clustering
+techniques such as k-means and Linear Discriminant Analysis (LDA)
+techniques. To assess the effectiveness of these techniques we will
+explore and compare them to Support Vector Machines (SVMs). As our data
+has many input variables, feature extraction methods such as PCA and
+Autoencoders will be explored before performing the above clustering and
+classification techniques. The repository of this project is available
+at</p>
 </div>
-<div id="data-cleaning" class="section level2">
-<h2>Data Cleaning</h2>
+<div id="exploratory-data-analysis" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> Exploratory Data
+Analysis</h1>
+<div id="feature-analysis" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Feature Analysis</h2>
 </div>
-<div id="feature-selection" class="section level2">
-<h2>Feature Selection</h2>
+<div id="data-cleaning" class="section level2" number="3.2">
+<h2><span class="header-section-number">3.2</span> Data Cleaning</h2>
 </div>
-<div id="feature-extraction" class="section level2">
-<h2>Feature Extraction</h2>
+<div id="feature-selection" class="section level2" number="3.3">
+<h2><span class="header-section-number">3.3</span> Feature
+Selection</h2>
+</div>
+<div id="feature-extraction" class="section level2" number="3.4">
+<h2><span class="header-section-number">3.4</span> Feature
+Extraction</h2>
 </div>
 </div>
-<div id="model-engineering" class="section level1">
-<h1>Model Engineering</h1>
+<div id="model-engineering" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> Model Engineering</h1>
 </div>
-<div id="model-evaluation" class="section level1">
-<h1>Model Evaluation</h1>
+<div id="model-evaluation" class="section level1" number="5">
+<h1><span class="header-section-number">5</span> Model Evaluation</h1>
 </div>
 
 
