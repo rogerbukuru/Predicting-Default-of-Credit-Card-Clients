@@ -331,8 +331,11 @@ var_first_3 = sum(variance_explained[1:3])
 pca_scores =  t(tcrossprod(eigenvectors, X_continous_c)) %>% as.tibble()
 colnames(pca_scores) = colnames(eigenvectors)
 
+```
+
+```{r, echo = FALSE}
 scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
-              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue")
+              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
 #fig <- plot_ly(pca_scores, x = ~PC1, y = ~PC2, z = ~PC3, type = 'scatter3d', mode = 'markers',
 #               marker = list(size = 5, color = 'blue'))
@@ -352,11 +355,10 @@ scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main =
 #pca_scores_two = classic_pca$x %>% as.tibble()
 
 #scatterplot3d(x = pca_scores_two$PC1, y = pca_scores_two$PC2, z = pca_scores_two$PC3, main = "Principal Components",
-              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue")
+             # xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue")
 
 #classic_pca$x == pca_scores
 ```
-
 ### Autoencoders
 
 ```{r, echo = FALSE}

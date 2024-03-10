@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2024.3.10)  10 MAR 2024 23:05
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2024.3.10)  11 MAR 2024 00:17
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1005,7 +1005,19 @@ File: written-report_files/figure-latex/unnamed-chunk-8-1.pdf Graphic file (type
 <use written-report_files/figure-latex/unnamed-chunk-8-1.pdf>
 Package pdftex.def Info: written-report_files/figure-latex/unnamed-chunk-8-1.pdf  used on input line 413.
 (pdftex.def)             Requested size: 361.34912pt x 361.34912pt.
-[8] [9 <./written-report_files/figure-latex/unnamed-chunk-8-1.pdf>] (./written-report.aux)
+[8]
+<written-report_files/figure-latex/unnamed-chunk-9-1.pdf, id=90, 361.35pt x 361.35pt>
+File: written-report_files/figure-latex/unnamed-chunk-9-1.pdf Graphic file (type pdf)
+<use written-report_files/figure-latex/unnamed-chunk-9-1.pdf>
+Package pdftex.def Info: written-report_files/figure-latex/unnamed-chunk-9-1.pdf  used on input line 434.
+(pdftex.def)             Requested size: 361.34912pt x 361.34912pt.
+[9 <./written-report_files/figure-latex/unnamed-chunk-8-1.pdf>]
+<written-report_files/figure-latex/unnamed-chunk-10-1.pdf, id=101, 361.35pt x 361.35pt>
+File: written-report_files/figure-latex/unnamed-chunk-10-1.pdf Graphic file (type pdf)
+<use written-report_files/figure-latex/unnamed-chunk-10-1.pdf>
+Package pdftex.def Info: written-report_files/figure-latex/unnamed-chunk-10-1.pdf  used on input line 436.
+(pdftex.def)             Requested size: 361.34912pt x 361.34912pt.
+[10 <./written-report_files/figure-latex/unnamed-chunk-9-1.pdf>] [11 <./written-report_files/figure-latex/unnamed-chunk-10-1.pdf>] (./written-report.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
@@ -1015,18 +1027,18 @@ LaTeX Warning: There were undefined references.
 
  ) 
 Here is how much of TeX's memory you used:
- 11906 strings out of 476076
- 185543 string characters out of 5791689
+ 11924 strings out of 476076
+ 186527 string characters out of 5791689
  1974187 words of memory out of 5000000
- 33799 multiletter control sequences out of 15000+600000
+ 33814 multiletter control sequences out of 15000+600000
  605792 words of font info for 80 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  89i,7n,93p,390b,596s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </Users/rogerbukuru/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/rogerbukuru/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/rogerbukuru/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr17.pfb></Users/rogerbukuru/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></Users/rogerbukuru/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt12.pfb></Users/rogerbukuru/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on written-report.pdf (9 pages, 196119 bytes).
+Output written on written-report.pdf (11 pages, 1366236 bytes).
 PDF statistics:
- 170 PDF objects out of 1000 (max. 8388607)
- 136 compressed objects within 2 object streams
- 26 named destinations out of 1000 (max. 500000)
- 101 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 192 PDF objects out of 1000 (max. 8388607)
+ 152 compressed objects within 2 object streams
+ 29 named destinations out of 1000 (max. 500000)
+ 111 words of extra memory for PDF output out of 10000 (max. 10000000)
 
