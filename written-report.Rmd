@@ -382,7 +382,8 @@ scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main =
 
 ```{r, echo=FALSE}
 
-# autoencoder in keras
+# Autoencoder Using relu 
+
 library(keras)
 
 total_features = ncol(train_X_continous)
@@ -390,16 +391,18 @@ input_layer = layer_input(shape = c(total_features))
 
 encoder = 
   input_layer %>%
-  layer_dense(units = total_features/2, activation = "tanh") %>%#Hidden layer 1
+  layer_dense(units = 15, activation = "relu") %>%#Hidden layer 1
   layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
-  layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
-  layer_dense(units = 3, activation = "tanh") # Botteneck layer/ compression and output
+  #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
+  layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
+  layer_dense(units = 3, activation = "relu") # Botteneck layer/ compression and output
   
 decoder = 
   encoder %>%
-  layer_dense(units = total_features/2, activation = "tanh") %>% #Hidden layer 1
+  layer_dense(units = 15, activation = "relu") %>% #Hidden layer 1
   layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
-  layer_dense(units = total_features, activation = "tanh") # Reconstructed/Output layer
+  layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
+  layer_dense(units = total_features, activation = "relu") # Reconstructed/Output layer
 
   
 autoencoder_model = keras_model(inputs = input_layer, outputs = decoder)  
@@ -409,7 +412,7 @@ autoencoder_model %>% compile(
   metrics = c("accuracy")
 )
 
-summary(autoencoder_model)
+#summary(autoencoder_model)
   
 train_autoencoder = function(epochs = 100) {
   auto_associative <-
@@ -418,12 +421,12 @@ train_autoencoder = function(epochs = 100) {
              as.matrix(train_X_continous),
              epochs = 100,
              shuffle = TRUE,
-             validation_data = list(as.matrix(test_X_continous), as.matrix(test_X_continous))
+             validation_data = list(as.matrix(validation_X_continous), as.matrix(validation_X_continous))
              )
   plot(auto_associative)
 }
 
-#train_autoencoder(epochs = 100)
+train_autoencoder(epochs = 100)
 
 ```
 
