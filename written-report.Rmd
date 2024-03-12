@@ -225,12 +225,17 @@ credit_default_data = credit_default_data%>%
 
 set.seed(10032024)
 dataSize = nrow(credit_default_data)
-trainingSize = floor(0.75*dataSize)
+trainingSize = floor(0.60*dataSize)
+validationSize = floor(0.20*dataSize)
+
 
 trainingDataIndices = sample(seq_len(dataSize), size = trainingSize)
+remaining_indices   = dataSize[-trainingDataIndices]
+validationDataIndices = sample(remaining_indices, size = validationSize)
 
 training_data = credit_default_data[trainingDataIndices,]
-testing_data  = credit_default_data[-trainingDataIndices,]
+validation_data = credit_default_data[validationDataIndices,]
+testing_data  = credit_default_data[-c(trainingDataIndices, validationDataIndices),]
 
 ```
 
@@ -239,17 +244,26 @@ testing_data  = credit_default_data[-trainingDataIndices,]
 ```{r, echo = FALSE}
 library(corrplot)
 
-X_categorical = training_data %>%
+train_X_categorical = training_data %>%
               select(where(is.factor))
-X_categorical = X_categorical[,-4]
-X_continous = training_data %>%
+train_X_categorical = train_X_categorical[,-4]
+train_X_continous = training_data %>%
               select(where(is.double))
 
-X_continous = X_continous[, -1]
+train_X_continous = train_X_continous[, -1]
+
+
+test_X_categorical = testing_data %>%
+              select(where(is.factor))
+test_X_categorical = test_X_categorical[,-4]
+test_X_continous = testing_data %>%
+              select(where(is.double))
+
+test_X_continous = test_X_continous[, -1]
 
 #summary(X_categorical)
 
-corr_matrix = cor(X_continous)
+corr_matrix = cor(train_X_continous)
 col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
 corrplot(corr_matrix, method = "color", col = col(200), 
          type = "full", order = "original", 
@@ -263,10 +277,10 @@ corrplot(corr_matrix, method = "color", col = col(200),
 # Standardize Data
 
 # Standardization
-mu_x_continous = apply(X_continous, 2, mean)
-sigma_x_continous = apply(X_continous, 2, sd)
+mu_x_continous = apply(train_X_continous, 2, mean)
+sigma_x_continous = apply(train_X_continous, 2, sd)
 
-X_continous_std = as.matrix(apply(X_continous, 2, function(X_continous)((X_continous - mean(X_continous))/sd(X_continous))) %>% as.tibble())
+train_X_continous_std = as.matrix(apply(train_X_continous, 2, function(train_X_continous)((train_X_continous - mean(train_X_continous))/sd(train_X_continous))) %>% as.tibble())
 
 #corr_matrix_std = cor(X_continous_std)
 #col_std <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
@@ -300,7 +314,7 @@ library(ggplot2)
 library(scatterplot3d)
 library(plotly)
   
-sigma_matrix   = cov(X_continous_std)
+sigma_matrix   = cov(train_X_continous_std)
 eigen_decomp   = eigen(sigma_matrix)
 
 eigenvalues   = eigen_decomp$values 
@@ -396,23 +410,81 @@ scatterplot3d(x = codings_df$DF.L1.C1, y = codings_df$DF.L1.C2, z = codings_df$D
 
 ```{r, echo=FALSE}
 # autoencoder in keras
-suppressPackageStartupMessages(library(keras))
+library(keras)
 
-# set training data
-x_train <- as.matrix(X_continous_std)
+total_features = ncol(train_X_continous)
+input_layer = layer_input(shape = c(total_features))
 
-# set model
-model <- keras_model_sequential()
-model %>%
-  layer_dense(units = 20, activation = "tanh", input_shape = ncol(x_train)) %>%
-  layer_dense(units = 2, activation = "tanh", name = "bottleneck") %>%
-  layer_dense(units = 20, activation = "tanh") %>%
-  layer_dense(units = ncol(x_train))
+encoder = 
+  input_layer %>%
+  layer_dense(units = total_features/2, activation = "tanh") %>%#Hidden layer 1
+  layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
+  layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
+  layer_dense(units = 3, activation = "tanh") # Botteneck layer/ compression and output
+  
+decoder = 
+  encoder %>%
+  layer_dense(units = total_features/2, activation = "tanh") %>% #Hidden layer 1
+  layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
+  layer_dense(units = total_features, activation = "tanh") # Reconstructed/Output layer
 
-# view model layers
-summary(model)
+  
+autoencoder_model = keras_model(inputs = input_layer, outputs = decoder)  
+autoencoder_model %>% compile(
+  loss = "mean_squared_error",
+  optimizer = "adam",
+  metrics = c("accuracy")
+)
+
+summary(autoencoder_model)
+  
+train_autoencoder = function(epochs = 100) {
+  auto_associative <-
+  autoencoder_model %>%
+  keras::fit(as.matrix(train_X_continous), 
+             as.matrix(train_X_continous),
+             epochs = 100,
+             shuffle = TRUE,
+             validation_data = list(as.matrix(test_X_continous), as.matrix(test_X_continous))
+             )
+  plot(auto_associative)
+}
+
+#train_autoencoder(epochs = 100)
+
 ```
 
+
+
+```{r, echo = FALSE}
+
+autoencoder_weights = 
+  autoencoder_model %>%
+  keras::get_weights()
+
+
+keras::save_model_weights_hdf5(object = autoencoder_model,filepath = "./data/autoencoder_weights.hdf5",overwrite = TRUE)
+
+encoder_model <- keras_model(inputs = input_layer, outputs = encoder)
+
+encoder_model %>% keras::load_model_weights_hdf5(filepath = "./data/autoencoder_weights.hdf5",skip_mismatch = TRUE,by_name = TRUE)
+
+encoder_model %>% compile(
+  loss='mean_squared_error',
+  optimizer='adam',
+  metrics = c('accuracy')
+)
+
+# Visualize how model has embedded data in 3-dimensions
+
+embedded_points = encoder_model %>%
+                  keras::predict_on_batch(x = as.matrix(train_X_continous)) %>%
+                  as.tibble()
+
+scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = "blue", cex.axis = 0.5)
+
+                  
+```
 # Model Engineering
 
 # Model Evaluation
