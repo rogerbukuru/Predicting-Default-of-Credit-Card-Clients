@@ -230,27 +230,27 @@ validationSize = floor(0.20*dataSize)
 
 
 trainingDataIndices = sample(seq_len(dataSize), size = trainingSize)
-remaining_indices   = dataSize[-trainingDataIndices]
+remaining_indices   = c(seq_len(dataSize))[-trainingDataIndices]
 validationDataIndices = sample(remaining_indices, size = validationSize)
 
 training_data = credit_default_data[trainingDataIndices,]
 validation_data = credit_default_data[validationDataIndices,]
 testing_data  = credit_default_data[-c(trainingDataIndices, validationDataIndices),]
 
-```
-
-## Correlation Analysis
-
-```{r, echo = FALSE}
-library(corrplot)
-
 train_X_categorical = training_data %>%
               select(where(is.factor))
 train_X_categorical = train_X_categorical[,-4]
 train_X_continous = training_data %>%
               select(where(is.double))
-
 train_X_continous = train_X_continous[, -1]
+
+
+validation_X_categorical = validation_data %>%
+              select(where(is.factor))
+validation_X_categorical = validation_X_categorical[,-4]
+validation_X_continous = validation_data %>%
+              select(where(is.double))
+validation_X_continous = validation_X_continous[, -1]
 
 
 test_X_categorical = testing_data %>%
@@ -260,6 +260,13 @@ test_X_continous = testing_data %>%
               select(where(is.double))
 
 test_X_continous = test_X_continous[, -1]
+
+```
+
+## Correlation Analysis
+
+```{r, echo = FALSE}
+library(corrplot)
 
 #summary(X_categorical)
 
@@ -337,7 +344,7 @@ var_first_4 = sum(variance_explained[1:4])
 
 variance_explained
 
-pca_scores =  t(tcrossprod(eigenvectors, X_continous_std)) %>% as.tibble()
+pca_scores =  t(tcrossprod(eigenvectors, train_X_continous_std)) %>% as.tibble()
 colnames(pca_scores) = colnames(eigenvectors)
 
 ```
@@ -372,43 +379,9 @@ scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main =
 
 ### Autoencoders
 
-```{r, echo = FALSE}
-#install.packages("h2o", type = "source", repos = (c("http://h2o-release.s3.amazonaws.com/h2o/latest_stable_R")))
-
-library(h2o)
-library(scatterplot3d)
-library(ggplot2)
-h2o.init()
-features <- as.h2o(X_continous_std)
-
-# Train an autoencoder
-ae1 <- h2o.deeplearning(
-  x = seq_along(features),
-  training_frame = features,
-  autoencoder = TRUE,
-  hidden = 3,
-  activation = 'Tanh',
-  sparse = FALSE
-)
-
-ae1_codings <- h2o.deepfeatures(ae1, features, layer = 1)
-ae1_codings
-
-codings_df <- as.data.frame(ae1_codings)
-
-ggplot(codings_df, aes(x = codings_df$DF.L1.C1, y = codings_df$DF.L1.C2)) +
-  geom_point(alpha = 0.7) +
-  theme_minimal() +
-  labs(title = "Autoencoder Components",
-       x = "Component 1",
-       y = "Component 2")
-
-scatterplot3d(x = codings_df$DF.L1.C1, y = codings_df$DF.L1.C2, z = codings_df$DF.L1.C3, main = "Autoencoder Components",
-              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
-```
-
 
 ```{r, echo=FALSE}
+
 # autoencoder in keras
 library(keras)
 
