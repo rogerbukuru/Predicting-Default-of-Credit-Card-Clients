@@ -21,7 +21,6 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 # Import Data 
 
 ```{r, echo = FALSE}
-
 rm(list = ls())
 library(readxl)
 library(tidyverse)
@@ -47,6 +46,8 @@ credit_default_data = credit_default_data[-1,]
 ## Feature Analysis
 
 ```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data")
+rm(list = setdiff(ls(), objects_to_keep))
 
 credit_default_data = credit_default_data %>%
                       mutate(across(where(is.character), as.numeric))
@@ -59,6 +60,8 @@ round(stats,2)
 - Education and Marriage have some unreported categories
 - 
 ```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data")
+rm(list = setdiff(ls(), objects_to_keep))
 response_variable = as.numeric(credit_default_data$`default payment next month`) %>%
                     as.tibble() %>%
                     rename(., Class = value)
@@ -89,6 +92,8 @@ ggplot(agg_data, aes(x = factor(Class, labels = c("No", "Yes")), y = Count, fill
 ```
 
 ```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data")
+rm(list = setdiff(ls(), objects_to_keep))
 limit_balances  = credit_default_data |>
                   drop_na(LIMIT_BAL) |>
                   select(LIMIT_BAL) |>
@@ -131,6 +136,8 @@ ggplot(credit_default_data, aes(x="", y=limit_balances)) +
 
 
 ```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data")
+rm(list = setdiff(ls(), objects_to_keep))
 credit_spending = credit_default_data %>%
                   select(LIMIT_BAL, BILL_AMT1) %>%
                   mutate(across(everything(), as.numeric)) %>%
@@ -157,7 +164,8 @@ ggplot(credit_spending, aes(x = `Percentage Utilized`)) +
 
 
 ```{r, echo = FALSE}
-
+objects_to_keep <- c("credit_default_data")
+rm(list = setdiff(ls(), objects_to_keep))
 # Marriage and Education and to other cateogry
 credit_default_data = credit_default_data %>%
                       rename(PAY_1 = PAY_0)%>% 
@@ -202,7 +210,8 @@ education_stats_2
 
 
 ```{r, echo = FALSE}
-
+objects_to_keep <- c("credit_default_data")
+rm(list = setdiff(ls(), objects_to_keep))
 # Payment History where value is -2 and 0, aggregate under -1
 
 payment_history = c("PAY_1", "PAY_2", "PAY_3", "PAY_4", "PAY_5","PAY_6")
@@ -215,7 +224,8 @@ for (p in payment_history) {
 ```
 
 ```{r, echo = FALSE}
-#payment_history_categorical = paste("PAY_", 1:6, sep = "")
+objects_to_keep <- c("credit_default_data")
+rm(list = setdiff(ls(), objects_to_keep))
 categorical_feature_names = c("SEX", "EDUCATION", "MARRIAGE", "DEFAULT_PAYMENT_NEXT_MONTH")
 credit_default_data = credit_default_data%>%
                       mutate(across(matches(categorical_feature_names), as.factor))
@@ -261,11 +271,26 @@ test_X_continous = testing_data %>%
 
 test_X_continous = test_X_continous[, -1]
 
+# Standardization
+mu_x_continous = apply(train_X_continous, 2, mean)
+sigma_x_continous = apply(train_X_continous, 2, sd)
+
+train_X_continous_std = as.matrix(apply(train_X_continous, 2, function(train_X_continous)((train_X_continous - mean(train_X_continous))/sd(train_X_continous))) %>% as.tibble())
+
 ```
 
 ## Correlation Analysis
 
 ```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data",
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
 library(corrplot)
 
 #summary(X_categorical)
@@ -283,11 +308,7 @@ corrplot(corr_matrix, method = "color", col = col(200),
 
 # Standardize Data
 
-# Standardization
-mu_x_continous = apply(train_X_continous, 2, mean)
-sigma_x_continous = apply(train_X_continous, 2, sd)
 
-train_X_continous_std = as.matrix(apply(train_X_continous, 2, function(train_X_continous)((train_X_continous - mean(train_X_continous))/sd(train_X_continous))) %>% as.tibble())
 
 #corr_matrix_std = cor(X_continous_std)
 #col_std <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
@@ -313,15 +334,96 @@ We observe from the correlation matrix, that some features have high correlation
 
 ## Feature Extraction
 
+### Resampling
+
+#### Oversampling
+
+```{r, echo=FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+#library(smotefamily)
+#install.packages(c("zoo","xts","quantmod", "ROCR")) ## and perhaps mode
+
+#install.packages("https://cran.r-project.org/src/contrib/Archive/DMwR/DMwR_0.4.1.tar.gz", repos=NULL, type="source")
+library(DMwR)
+
+# Assume your target variable is binary and the minority class is "1"
+#result <- SMOTE(form = target_variable ~ ., dat = your_data, perc.over = 100, k = 5)
+
+train_oversampled_data <- SMOTE(DEFAULT_PAYMENT_NEXT_MONTH ~ ., data = as.data.frame(training_data), perc.over = 200, k = 5)
+
+train_X_categorical_oversampled = train_oversampled_data %>%
+              select(where(is.factor))
+train_X_categorical_oversampled = train_X_categorical_oversampled[,-4]
+train_X_continous_oversampled = train_oversampled_data %>%
+              select(where(is.double))
+train_X_continous_oversampled = train_X_continous_oversampled[, -1]
+
+# Standardization
+mu_x_continous_oversampled = apply(train_X_continous_oversampled, 2, mean)
+sigma_x_continous_oversampled  = apply(train_X_continous_oversampled, 2, sd)
+
+train_X_continous_std_oversampled  = as.matrix(apply(train_X_continous_oversampled, 2, function(train_X_continous_oversampled)((train_X_continous_oversampled - mean(train_X_continous_oversampled))/sd(train_X_continous_oversampled))) %>% as.tibble())
+
+
+response_variable_2 = as.numeric(train_oversampled_data$DEFAULT_PAYMENT_NEXT_MONTH) %>%
+                    as.tibble() %>%
+                    rename(., Class = value)
+
+
+default_yes_2 = response_variable_2 %>%
+              filter(Class == 1)
+
+
+default_no_2 =  response_variable_2 %>%
+              filter(Class == 0)
+
+agg_data_2 = response_variable_2 %>%
+           group_by(Class) %>%
+           summarise(Count = n()) %>%
+           mutate(Percentage = Count /sum(Count) *100)
+
+percentage_yes_2 = nrow(default_yes_2)/nrow(train_oversampled_data) *100
+percentage_no_2 = nrow(default_no_2)/nrow(train_oversampled_data) *100  
+
+ggplot(agg_data_2, aes(x = factor(Class, labels = c("No", "Yes")), y = Count, fill = factor(Class, labels = c("No", "Yes")))) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), vjust = -0.5) +
+  labs(x = "Default payment next month", y = "Number of Clients", title = "Class Distribution") +
+  scale_fill_manual(values = c("No" = "darkgreen", "Yes" = "red")) +  # Customize bar colors
+  theme_minimal()+
+  theme(legend.position = "none")  # Remove the legend
+
+```
+
 ### Principal Component Analysis
 
 ```{r, echo= FALSE}
-
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous",
+                     "train_X_continous_oversampled",
+                     "train_X_continous_std_oversampled",
+                     "mu_x_continous_oversampled",
+                     "sigma_x_continous_oversampled"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
 library(ggplot2)
 library(scatterplot3d)
 library(plotly)
   
-sigma_matrix   = cov(train_X_continous_std)
+sigma_matrix   = cov(train_X_continous_std_oversampled)
 eigen_decomp   = eigen(sigma_matrix)
 
 eigenvalues   = eigen_decomp$values 
@@ -344,12 +446,26 @@ var_first_4 = sum(variance_explained[1:4])
 
 variance_explained
 
-pca_scores =  t(tcrossprod(eigenvectors, train_X_continous_std)) %>% as.tibble()
+pca_scores =  t(tcrossprod(eigenvectors, train_X_continous_std_oversampled)) %>% as.tibble()
 colnames(pca_scores) = colnames(eigenvectors)
 
 ```
 
 ```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous",
+                     "train_X_continous_oversampled",
+                     "train_X_continous_std_oversampled",
+                     "mu_x_continous_oversampled",
+                     "sigma_x_continous_oversampled",
+                     "pca_scores"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
 scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
               xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
@@ -381,27 +497,40 @@ scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main =
 
 
 ```{r, echo=FALSE}
-
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous",
+                     "train_X_continous_oversampled",
+                     "train_X_continous_std_oversampled",
+                     "mu_x_continous_oversampled",
+                     "sigma_x_continous_oversampled",
+                     "pca_scores"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
 # Autoencoder Using relu 
 
 library(keras)
 
-total_features = ncol(train_X_continous)
+total_features = ncol(train_X_continous_std_oversampled)
 input_layer = layer_input(shape = c(total_features))
 
 encoder = 
   input_layer %>%
-  layer_dense(units = 15, activation = "relu") %>%#Hidden layer 1
-  layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
+  layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 1
+  #layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
   #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
-  layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
+  #layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
   layer_dense(units = 3, activation = "relu") # Botteneck layer/ compression and output
   
 decoder = 
   encoder %>%
-  layer_dense(units = 15, activation = "relu") %>% #Hidden layer 1
-  layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
-  layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
+  layer_dense(units = total_features/2 , activation = "relu") %>% #Hidden layer 1
+  #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
+  #layer_dense(units = 15, activation = "relu") %>%#Hidden layer 2
   layer_dense(units = total_features, activation = "relu") # Reconstructed/Output layer
 
   
@@ -412,7 +541,7 @@ autoencoder_model %>% compile(
   metrics = c("accuracy")
 )
 
-#summary(autoencoder_model)
+summary(autoencoder_model)
   
 train_autoencoder = function(epochs = 100) {
   auto_associative <-
@@ -426,7 +555,7 @@ train_autoencoder = function(epochs = 100) {
   plot(auto_associative)
 }
 
-train_autoencoder(epochs = 100)
+#train_autoencoder(epochs = 100)
 
 ```
 
@@ -434,6 +563,23 @@ train_autoencoder(epochs = 100)
 
 ```{r, echo = FALSE}
 
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous",
+                     "train_X_continous_oversampled",
+                     "train_X_continous_std_oversampled",
+                     "mu_x_continous_oversampled",
+                     "sigma_x_continous_oversampled",
+                     "pca_scores",
+                     "input_layer",
+                     "encoder",
+                     "autoencoder_model"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
 autoencoder_weights = 
   autoencoder_model %>%
   keras::get_weights()
@@ -454,14 +600,64 @@ encoder_model %>% compile(
 # Visualize how model has embedded data in 3-dimensions
 
 embedded_points = encoder_model %>%
-                  keras::predict_on_batch(x = as.matrix(train_X_continous)) %>%
+                  keras::predict_on_batch(x = as.matrix(train_X_continous_std_oversampled)) %>%
                   as.tibble()
-
+#plot(embedded_points$V1, embedded_points$V2)
 scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = "blue", cex.axis = 0.5)
+
+summary(encoder_model)
 
                   
 ```
+
+### Variational Autoencoders
+
+### Technique evaluation
+
+```{r, echo=FALSE}
+
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous",
+                     "train_X_continous_oversampled",
+                     "train_X_continous_std_oversampled",
+                     "mu_x_continous_oversampled",
+                     "sigma_x_continous_oversampled",
+                     "pca_scores",
+                     "input_layer",
+                     "encoder",
+                     "autoencoder_model"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+
+pca_reconstructed = pca_scores
+reconstructed_original_scale = sweep(pca_reconstructed,2,sigma_x_continous_oversampled, "*")
+reconstructed_original_scale = sweep(pca_reconstructed,2,mu_x_continous_oversampled, "+")
+
+pca_mse = mean((as.matrix(train_X_continous_oversampled) - as.matrix(reconstructed_original_scale))^2)
+
+autoencoder_stats = evaluate(autoencoder_model, train_X_continous_std_oversampled, train_X_continous_std_oversampled)
+
+autoencoder_stats["loss"]
+pca_mse
+
+#c(1:10, 1:5)
+
+#df <- data.frame(k = c(1:10, 1:5), mse = c(pca_mse, ae.mse), method = c(rep("pca", 10), rep("autoencoder", 5)))
+#ggplot(df, aes(x = k, y = mse, col = method)) + geom_line()
+
+```
+
+
 # Model Engineering
+
+## Linear Discriminant Analysis
+
+## Support Vector Machines
 
 # Model Evaluation
 
