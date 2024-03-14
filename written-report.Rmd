@@ -468,14 +468,13 @@ objects_to_keep <- c("credit_default_data",
                      "train_X_continous_std_oversampled",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
-                     "pca_scores"
+                     "pca_scores",
+                     "eigenvectors"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
               xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
-scatterplot3d(x = classic$x[,1], y = classic$x[,2], z = classic$x[,3], main = "Principal Components",
-              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
 ```
 
@@ -495,20 +494,21 @@ objects_to_keep <- c("credit_default_data",
                      "train_X_continous_std_oversampled",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
-                     "pca_scores"
+                     "pca_scores",
+                     "eigenvectors"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 # Autoencoder Using relu 
 
 library(keras)
 
-total_features = ncol(train_X_continous_std_oversampled)
+total_features = ncol(train_X_continous_oversampled)
 input_layer = layer_input(shape = c(total_features))
 
 encoder = 
   input_layer %>%
   layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 1
-  #layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
+  layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
   #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
   #layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
   layer_dense(units = 3, activation = "relu") # Botteneck layer/ compression and output
@@ -535,8 +535,8 @@ summary(autoencoder_model)
 train_autoencoder = function(epochs = 100) {
   auto_associative <-
   autoencoder_model %>%
-  fit(as.matrix(train_X_continous), 
-             as.matrix(train_X_continous),
+  fit(as.matrix(train_X_continous_oversampled), 
+             as.matrix(train_X_continous_oversampled),
              epochs = 100,
              shuffle = TRUE,
              validation_data = list(as.matrix(validation_X_continous), as.matrix(validation_X_continous))
@@ -546,11 +546,12 @@ train_autoencoder = function(epochs = 100) {
 
 autoencoder_mse = rep(NA, 5)
 for(k in 1:5){
-  train_autoencoder(epochs = 100)
-  autoencoder_stats = evaluate(autoencoder_model, train_X_continous_std_oversampled,train_X_continous_std_oversampled)
-  autoencoder_mse[k] = autoencoder_mse["loss"]
+  #train_autoencoder(epochs = 100)
+  autoencoder_stats = evaluate(autoencoder_model, train_X_continous_oversampled,train_X_continous_oversampled)
+  autoencoder_mse[k] = autoencoder_stats["loss"]
 }
 
+autoencoder_mse
 
 ```
 
@@ -570,9 +571,11 @@ objects_to_keep <- c("credit_default_data",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
                      "pca_scores",
+                     "eigenvectors",
                      "input_layer",
                      "encoder",
-                     "autoencoder_model"
+                     "autoencoder_model",
+                     "autoencoder_mse"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
@@ -625,7 +628,8 @@ objects_to_keep <- c("credit_default_data",
                      "input_layer",
                      "encoder",
                      "autoencoder_model",
-                     "autoencoder_weights"
+                     "autoencoder_weights",
+                     "autoencoder_mse"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
@@ -646,8 +650,8 @@ for(k in 1:20){
 
 
 
-#df <- data.frame(k = c(1:10, 1:5), mse = c(pca_mse, ae.mse), method = c(rep("pca", 10), rep("autoencoder", 5)))
-#ggplot(df, aes(x = k, y = mse, col = method)) + geom_line()
+df <- data.frame(k = c(1:20, 1:5), mse = c(pca_mse, autoencoder_mse), method = c(rep("pca", 20), rep("autoencoder", 5)))
+ggplot(df, aes(x = k, y = mse, col = method)) + geom_line()
 
 ```
 
