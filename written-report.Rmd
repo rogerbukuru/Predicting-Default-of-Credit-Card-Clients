@@ -449,6 +449,11 @@ variance_explained
 pca_scores =  t(tcrossprod(eigenvectors, train_X_continous_std_oversampled)) %>% as.tibble()
 colnames(pca_scores) = colnames(eigenvectors)
 
+classic = prcomp(train_X_continous_std_oversampled, retx = TRUE, center = FALSE, scale. = FALSE)
+
+classic$rotation == eigenvectors
+
+classic$x
 ```
 
 ```{r, echo = FALSE}
@@ -469,27 +474,9 @@ rm(list = setdiff(ls(), objects_to_keep))
 scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
               xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
-#fig <- plot_ly(pca_scores, x = ~PC1, y = ~PC2, z = ~PC3, type = 'scatter3d', mode = 'markers',
-#               marker = list(size = 5, color = 'blue'))
+scatterplot3d(x = classic$x[,1], y = classic$x[,2], z = classic$x[,3], main = "Principal Components",
+              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
-# Customize the layout
-#fig <- fig %>% layout(title = '3D Scatter Plot',
-#                      scene = list(xaxis = list(title = 'PC1'),
-#                                   yaxis = list(title = 'PC2'),
-#                                   zaxis = list(title = 'PC3')))
-#fig
-#svd_decomp = svd(continous_features)
-
-#continous_vars = credit_default_data%>%
- #                select(where(is.))
-
-#classic_pca = prcomp(X_continous_c, retx = TRUE, center = FALSE, scale. = FALSE)
-#pca_scores_two = classic_pca$x %>% as.tibble()
-
-#scatterplot3d(x = pca_scores_two$PC1, y = pca_scores_two$PC2, z = pca_scores_two$PC3, main = "Principal Components",
-             # xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue")
-
-#classic_pca$x == pca_scores
 ```
 
 
@@ -542,11 +529,13 @@ autoencoder_model %>% compile(
 )
 
 summary(autoencoder_model)
-  
+
+
+
 train_autoencoder = function(epochs = 100) {
   auto_associative <-
   autoencoder_model %>%
-  keras::fit(as.matrix(train_X_continous), 
+  fit(as.matrix(train_X_continous), 
              as.matrix(train_X_continous),
              epochs = 100,
              shuffle = TRUE,
@@ -555,7 +544,13 @@ train_autoencoder = function(epochs = 100) {
   plot(auto_associative)
 }
 
-#train_autoencoder(epochs = 100)
+autoencoder_mse = rep(NA, 5)
+for(k in 1:5){
+  train_autoencoder(epochs = 100)
+  autoencoder_stats = evaluate(autoencoder_model, train_X_continous_std_oversampled,train_X_continous_std_oversampled)
+  autoencoder_mse[k] = autoencoder_mse["loss"]
+}
+
 
 ```
 
@@ -580,16 +575,17 @@ objects_to_keep <- c("credit_default_data",
                      "autoencoder_model"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
+
 autoencoder_weights = 
   autoencoder_model %>%
-  keras::get_weights()
+  get_weights()
 
 
-keras::save_model_weights_hdf5(object = autoencoder_model,filepath = "./data/autoencoder_weights.hdf5",overwrite = TRUE)
+save_model_weights_hdf5(object = autoencoder_model,filepath = "./data/autoencoder_weights.hdf5",overwrite = TRUE)
 
 encoder_model <- keras_model(inputs = input_layer, outputs = encoder)
 
-encoder_model %>% keras::load_model_weights_hdf5(filepath = "./data/autoencoder_weights.hdf5",skip_mismatch = TRUE,by_name = TRUE)
+encoder_model %>% load_model_weights_hdf5(filepath = "./data/autoencoder_weights.hdf5",skip_mismatch = TRUE,by_name = TRUE)
 
 encoder_model %>% compile(
   loss='mean_squared_error',
@@ -600,14 +596,11 @@ encoder_model %>% compile(
 # Visualize how model has embedded data in 3-dimensions
 
 embedded_points = encoder_model %>%
-                  keras::predict_on_batch(x = as.matrix(train_X_continous_std_oversampled)) %>%
+                  predict_on_batch(x = as.matrix(train_X_continous_std_oversampled)) %>%
                   as.tibble()
 #plot(embedded_points$V1, embedded_points$V2)
 scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = "blue", cex.axis = 0.5)
 
-summary(encoder_model)
-
-                  
 ```
 
 ### Variational Autoencoders
@@ -628,24 +621,30 @@ objects_to_keep <- c("credit_default_data",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
                      "pca_scores",
+                     "eigenvectors",
                      "input_layer",
                      "encoder",
-                     "autoencoder_model"
+                     "autoencoder_model",
+                     "autoencoder_weights"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
-pca_reconstructed = pca_scores
-reconstructed_original_scale = sweep(pca_reconstructed,2,sigma_x_continous_oversampled, "*")
-reconstructed_original_scale = sweep(pca_reconstructed,2,mu_x_continous_oversampled, "+")
 
-pca_mse = mean((as.matrix(train_X_continous_oversampled) - as.matrix(reconstructed_original_scale))^2)
+pca_stats = function(pca, x, x_std, mu_x, sigma_x, k){
+x_projected =  x_std%*%pca[, 1:k]%>%as.tibble()
+#x_projected_og_scale = sweep(x_projected,2,sigma_x, "*")
+#x_projected_og_scale = sweep(x_projected,2,mu_x, "+")
+mse = mean(as.matrix((as.matrix(x_std)-x_projected)^2))
+return(list(x = x_projected, mse = mse))
+}
 
-autoencoder_stats = evaluate(autoencoder_model, train_X_continous_std_oversampled, train_X_continous_std_oversampled)
+pca_mse = rep(NA, 20)
+for(k in 1:20){
+ pca_mse[k] = pca_stats(eigenvectors,train_X_continous_oversampled, train_X_continous_std_oversampled, mu_x_continous_oversampled,     sigma_x_continous_oversampled, k)$mse
 
-autoencoder_stats["loss"]
-pca_mse
+}
 
-#c(1:10, 1:5)
+
 
 #df <- data.frame(k = c(1:10, 1:5), mse = c(pca_mse, ae.mse), method = c(rep("pca", 10), rep("autoencoder", 5)))
 #ggplot(df, aes(x = k, y = mse, col = method)) + geom_line()
