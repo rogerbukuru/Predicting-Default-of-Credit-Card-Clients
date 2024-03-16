@@ -372,6 +372,11 @@ sigma_x_continous_oversampled  = apply(train_X_continous_oversampled, 2, sd)
 
 train_X_continous_std_oversampled  = as.matrix(apply(train_X_continous_oversampled, 2, function(train_X_continous_oversampled)((train_X_continous_oversampled - mean(train_X_continous_oversampled))/sd(train_X_continous_oversampled))) %>% as.tibble())
 
+mu_x_continous_oversampled = apply(train_X_continous_oversampled, 2, mean)
+sigma_x_continous_oversampled  = apply(train_X_continous_oversampled, 2, sd)
+
+validation_X_continous_std  = as.matrix(apply(validation_X_continous, 2, function(validation_X_continous)((validation_X_continous - mean(validation_X_continous))/sd(validation_X_continous))) %>% as.tibble())
+
 
 response_variable_2 = as.numeric(train_oversampled_data$DEFAULT_PAYMENT_NEXT_MONTH) %>%
                     as.tibble() %>%
@@ -405,6 +410,32 @@ ggplot(agg_data_2, aes(x = factor(Class, labels = c("No", "Yes")), y = Count, fi
 
 ### Principal Component Analysis
 
+#### Normality Check
+
+```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous",
+                     "train_X_continous_oversampled",
+                     "train_X_continous_std_oversampled",
+                     "mu_x_continous_oversampled",
+                     "sigma_x_continous_oversampled",
+                     "validation_X_continous_std"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+
+library(MVN)
+#mvn_result <- mvn(data = train_X_continous, mvnTest = "mardia")
+#print(mvn_result)
+
+#shapiro.test(train_X_continous$LIMIT_BAL[1:5000])
+```
+
+
 ```{r, echo= FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
@@ -416,7 +447,8 @@ objects_to_keep <- c("credit_default_data",
                      "train_X_continous_oversampled",
                      "train_X_continous_std_oversampled",
                      "mu_x_continous_oversampled",
-                     "sigma_x_continous_oversampled"
+                     "sigma_x_continous_oversampled",
+                     "validation_X_continous_std"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 library(ggplot2)
@@ -449,11 +481,11 @@ variance_explained
 pca_scores =  t(tcrossprod(eigenvectors, train_X_continous_std_oversampled)) %>% as.tibble()
 colnames(pca_scores) = colnames(eigenvectors)
 
-classic = prcomp(train_X_continous_std_oversampled, retx = TRUE, center = FALSE, scale. = FALSE)
+#classic = prcomp(train_X_continous_std_oversampled, retx = TRUE, center = FALSE, scale. = FALSE)
 
-classic$rotation == eigenvectors
+#classic$rotation == eigenvectors
 
-classic$x
+#classic$x
 ```
 
 ```{r, echo = FALSE}
@@ -469,7 +501,8 @@ objects_to_keep <- c("credit_default_data",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
                      "pca_scores",
-                     "eigenvectors"
+                     "eigenvectors",
+                     "validation_X_continous_std"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
@@ -495,23 +528,31 @@ objects_to_keep <- c("credit_default_data",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
                      "pca_scores",
-                     "eigenvectors"
+                     "eigenvectors",
+                     "validation_X_continous_std"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 # Autoencoder Using relu 
 
 library(keras)
 
-total_features = ncol(train_X_continous_oversampled)
+
+
+
+
+
+train_autoencoder = function(epochs = 100, code_size = 1) {
+  
+total_features = ncol(train_X_continous_std_oversampled)
 input_layer = layer_input(shape = c(total_features))
 
 encoder = 
   input_layer %>%
   layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 1
-  layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
+  #layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
   #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
   #layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
-  layer_dense(units = 3, activation = "relu") # Botteneck layer/ compression and output
+  layer_dense(units = code_size, activation = "relu") # Botteneck layer/ compression and output
   
 decoder = 
   encoder %>%
@@ -530,24 +571,64 @@ autoencoder_model %>% compile(
 
 summary(autoencoder_model)
 
-
-
-train_autoencoder = function(epochs = 100) {
-  auto_associative <-
+  auto_associative =
   autoencoder_model %>%
-  fit(as.matrix(train_X_continous_oversampled), 
-             as.matrix(train_X_continous_oversampled),
-             epochs = 100,
+  fit(as.matrix(train_X_continous_std_oversampled), 
+             as.matrix(train_X_continous_std_oversampled),
+             epochs = epochs,
              shuffle = TRUE,
-             validation_data = list(as.matrix(validation_X_continous), as.matrix(validation_X_continous))
+             validation_data = list(as.matrix(validation_X_continous_std), as.matrix(validation_X_continous_std))
              )
   plot(auto_associative)
+  if(code_size >= 1 & code_size <=3){
+  visualize_compressed_data(autoencoder_model,input_layer, encoder, code_size)
+  }
+  return(list(aem = autoencoder_model))
 }
 
+visualize_compressed_data = function(autoencoder_model, input_layer, encoder, code_size = 1){
+if(code_size >3){
+  return(NULL)
+}
+autoencoder_weights = 
+  autoencoder_model %>%
+  get_weights()
+
+file_name = paste("autoencoder_weights", code_size, sep = "-")
+save_model_weights_hdf5(object = autoencoder_model,filepath = paste0("./data/", file_name, ".hdf5"),overwrite = TRUE)
+
+encoder_model <- keras_model(inputs = input_layer, outputs = encoder)
+
+encoder_model %>% load_model_weights_hdf5(filepath = paste0("./data/", file_name, ".hdf5"),skip_mismatch = TRUE,by_name = TRUE)
+
+encoder_model %>% compile(
+  loss='mean_squared_error',
+  optimizer='adam',
+  metrics = c('accuracy')
+)
+
+# Visualize how model has embedded data in 3-dimensions
+
+embedded_points = encoder_model %>%
+                  predict_on_batch(x = as.matrix(train_X_continous_std_oversampled)) %>%
+                  as.tibble()
+#plot(embedded_points$V1, embedded_points$V2)
+  if(code_size == 1){
+    plot(embedded_points$V1)
+  }else if(code_size == 2){
+        plot(embedded_points$V1, embedded_points$V2)
+    
+  }else if(code_size == 3){
+     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = "blue", cex.axis = 0.5)
+  }else {
+    print("Cannot visualize higher than 3-D")
+  }
+}
 autoencoder_mse = rep(NA, 5)
+
 for(k in 1:5){
-  #train_autoencoder(epochs = 100)
-  autoencoder_stats = evaluate(autoencoder_model, train_X_continous_oversampled,train_X_continous_oversampled)
+  train_aem = train_autoencoder(epochs = 100, code_size = k)
+  autoencoder_stats = evaluate(train_aem$aem,    as.matrix(train_X_continous_std_oversampled),as.matrix(train_X_continous_std_oversampled))
   autoencoder_mse[k] = autoencoder_stats["loss"]
 }
 
@@ -579,33 +660,31 @@ objects_to_keep <- c("credit_default_data",
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
-autoencoder_weights = 
-  autoencoder_model %>%
-  get_weights()
 
-
-save_model_weights_hdf5(object = autoencoder_model,filepath = "./data/autoencoder_weights.hdf5",overwrite = TRUE)
-
-encoder_model <- keras_model(inputs = input_layer, outputs = encoder)
-
-encoder_model %>% load_model_weights_hdf5(filepath = "./data/autoencoder_weights.hdf5",skip_mismatch = TRUE,by_name = TRUE)
-
-encoder_model %>% compile(
-  loss='mean_squared_error',
-  optimizer='adam',
-  metrics = c('accuracy')
-)
-
-# Visualize how model has embedded data in 3-dimensions
-
-embedded_points = encoder_model %>%
-                  predict_on_batch(x = as.matrix(train_X_continous_std_oversampled)) %>%
-                  as.tibble()
-#plot(embedded_points$V1, embedded_points$V2)
-scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = "blue", cex.axis = 0.5)
 
 ```
 
+### Polynomial PCA
+
+```{r, echo=FALSE}
+
+# Create polynomial features
+df_poly <- train_X_continous_std_oversampled %>%as.tibble()%>%
+  mutate(across(everything(), list(
+    squared = ~ .^2
+  )))
+
+classic = prcomp(df_poly, retx = TRUE, center = FALSE, scale. = FALSE)
+
+
+summary(classic)
+#classic$rotation == eigenvectors
+
+#classic$x
+
+scatterplot3d(x = classic$rotation[,1], y = classic$rotation[,2], z = classic$rotation[,3], main = "Principal Components",xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
+
+```
 ### Variational Autoencoders
 
 ### Technique evaluation
