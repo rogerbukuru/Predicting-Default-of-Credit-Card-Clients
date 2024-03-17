@@ -500,9 +500,9 @@ objects_to_keep <- c("credit_default_data",
                      "train_X_continous_std_oversampled",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
+                     "validation_X_continous_std",
                      "pca_scores",
-                     "eigenvectors",
-                     "validation_X_continous_std"
+                     "eigenvectors"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
@@ -525,20 +525,16 @@ objects_to_keep <- c("credit_default_data",
                      "sigma_x_continous",
                      "train_X_continous_oversampled",
                      "train_X_continous_std_oversampled",
+                     "validation_X_continous_std",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
                      "pca_scores",
-                     "eigenvectors",
-                     "validation_X_continous_std"
+                     "eigenvectors"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 # Autoencoder Using relu 
 
 library(keras)
-
-
-
-
 
 
 train_autoencoder = function(epochs = 100, code_size = 1) {
@@ -548,18 +544,18 @@ input_layer = layer_input(shape = c(total_features))
 
 encoder = 
   input_layer %>%
-  layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 1
+  layer_dense(units = total_features/2, activation = "relu") %>%# encoder layer 1
   #layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
   #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
   #layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
-  layer_dense(units = code_size, activation = "relu") # Botteneck layer/ compression and output
+  layer_dense(units = code_size) # Botteneck layer/ Laten Layer
   
 decoder = 
   encoder %>%
-  layer_dense(units = total_features/2 , activation = "relu") %>% #Hidden layer 1
+  layer_dense(units = total_features/2 , activation = "relu") %>% # Decoder Layer 1
   #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
   #layer_dense(units = 15, activation = "relu") %>%#Hidden layer 2
-  layer_dense(units = total_features, activation = "relu") # Reconstructed/Output layer
+  layer_dense(units = total_features) # Reconstructed/Output layer
 
   
 autoencoder_model = keras_model(inputs = input_layer, outputs = decoder)  
@@ -576,6 +572,7 @@ summary(autoencoder_model)
   fit(as.matrix(train_X_continous_std_oversampled), 
              as.matrix(train_X_continous_std_oversampled),
              epochs = epochs,
+             batch_size = 256,
              shuffle = TRUE,
              validation_data = list(as.matrix(validation_X_continous_std), as.matrix(validation_X_continous_std))
              )
@@ -626,13 +623,13 @@ embedded_points = encoder_model %>%
 }
 autoencoder_mse = rep(NA, 5)
 
-for(k in 1:5){
-  train_aem = train_autoencoder(epochs = 100, code_size = k)
-  autoencoder_stats = evaluate(train_aem$aem,    as.matrix(train_X_continous_std_oversampled),as.matrix(train_X_continous_std_oversampled))
-  autoencoder_mse[k] = autoencoder_stats["loss"]
-}
+#for(k in 1:5){
+#  train_aem = train_autoencoder(epochs = 100, code_size = k)
+#  autoencoder_stats = evaluate(train_aem$aem,    #as.matrix(train_X_continous_std_oversampled),as.matrix(train_X_continous_std_oversampled))
+#  autoencoder_mse[k] = autoencoder_stats["loss"]
+#}
 
-autoencoder_mse
+#autoencoder_mse
 
 ```
 
@@ -651,6 +648,7 @@ objects_to_keep <- c("credit_default_data",
                      "train_X_continous_std_oversampled",
                      "mu_x_continous_oversampled",
                      "sigma_x_continous_oversampled",
+                     "validation_X_continous_std",
                      "pca_scores",
                      "eigenvectors",
                      "input_layer",
@@ -668,24 +666,175 @@ rm(list = setdiff(ls(), objects_to_keep))
 
 ```{r, echo=FALSE}
 
-# Create polynomial features
-df_poly <- train_X_continous_std_oversampled %>%as.tibble()%>%
-  mutate(across(everything(), list(
-    squared = ~ .^2
-  )))
-
-classic = prcomp(df_poly, retx = TRUE, center = FALSE, scale. = FALSE)
-
-
-summary(classic)
-#classic$rotation == eigenvectors
-
-#classic$x
-
-scatterplot3d(x = classic$rotation[,1], y = classic$rotation[,2], z = classic$rotation[,3], main = "Principal Components",xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
+# # Create polynomial features
+# df_poly <- train_X_continous_std_oversampled %>%as.tibble()%>%
+#   mutate(across(everything(), list(
+#     squared = ~ .^2
+#   )))
+# 
+# classic = prcomp(df_poly, retx = TRUE, center = FALSE, scale. = FALSE)
+# 
+# 
+# summary(classic)
+# #classic$rotation == eigenvectors
+# 
+# #classic$x
+# 
+# scatterplot3d(x = classic$rotation[,1], y = classic$rotation[,2], z = classic$rotation[,3], main = "Principal Components",xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
 ```
 ### Variational Autoencoders
+
+```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous",
+                     "train_X_continous_oversampled",
+                     "train_X_continous_std_oversampled",
+                     "mu_x_continous_oversampled",
+                     "sigma_x_continous_oversampled",
+                     "validation_X_continous_std",
+                     "pca_scores",
+                     "eigenvectors",
+                     "input_layer",
+                     "encoder",
+                     "autoencoder_model",
+                     "autoencoder_mse"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+sampling_layer <- new_layer_class(
+  classname = "SamplingLayer",
+  initialize = function(latent_dim) {
+    super()$`__init__`()
+    self$latent_dim <- as.integer(latent_dim)
+    self$epsilon <- k_random_normal(shape = c(1, latent_dim), mean = 0, stddev = 1)  # Pre-generate noise
+  },
+  call = function(self, inputs) {
+    z_mean <- inputs[[1]]
+    z_log_var <- inputs[[2]]
+    z = z_mean + k_exp(z_log_var / 2) * self$epsilon
+    
+    kl_loss <- -0.5 * k_sum(1 + z_log_var - k_square(z_mean) - k_exp(z_log_var), axis = -1)
+    kl_loss <- k_mean(kl_loss) # Take the mean of the KL divergence loss
+    self$add_loss(kl_loss)
+    
+    return(z)
+  }
+)
+
+variational_autoencoder = function(latent_space_dim,batch_size, x_train, x_validation, epochs){
+  
+total_features = ncol(x_train)
+input_layer = layer_input(shape = c(total_features), name="inputLayer")
+
+encoder_inputs = 
+  input_layer %>%
+  layer_dense(units = total_features/2, activation = "relu", name = "encoderHiddenL1")#Hidden layer 1
+
+
+# Latent Space
+z_mean = encoder_inputs %>% layer_dense(units = latent_space_dim, name = "z_mean")
+z_log_var = encoder_inputs %>% layer_dense(units = latent_space_dim, name= "z_log_var")
+# z = layer_concatenate(list(z_mean, z_log_var))%>%layer_lambda(f = function(arg){
+#   z_mean <- arg[, 1:(latent_space_dim)]
+#   z_log_var <- arg[, (latent_space_dim + 1):(2 * latent_space_dim)]
+#   epsilon = k_random_normal(shape = c(k_shape(z_mean)[[1]]), mean = 0, stddev = 1)
+#   z_mean + k_exp(z_log_var/2)*epsilon
+# }, output_shape = c(latent_space_dim), name = "samplingLayer")
+
+#samplingLayer = SamplingLayer$new()
+#z = samplingLayer$call(list(z_mean, z_log_var))
+ # Custom sampling layer
+
+sampling <- sampling_layer(latent_dim = latent_space_dim)
+z <- sampling(list(z_mean, z_log_var))
+
+encoder = keras_model(inputs = input_layer, outputs = list(z_mean, z_log_var,z), name = "encoder")
+summary(encoder)
+
+# latent_inputs <- layer_input(shape = c(latent_space_dim), name= "latentLayer")
+# decoder_outputs =
+#   latent_inputs %>%
+#   layer_dense(units = total_features/2 , activation = "relu", name="decoderHiddenL1")%>% #Hidden layer 1
+#   layer_dense(units = total_features, activation = "relu", name = "decoderOutput") # Reconstructed/Output layer
+# 
+# decoder = keras_model(inputs = latent_inputs, outputs = decoder_outputs, name = "decoder")
+# summary(decoder)
+
+decoder_hidden_l1 = layer_dense(units = total_features/2 , activation = "relu", name="decoderHiddenL1") #Hidden layer 1
+decoder_output = layer_dense(units = total_features, activation = "relu", name = "decoderOutput") # Reconstructed/Output layer
+
+sample_decode_h_l1 = decoder_hidden_l1(z)
+sample_final_decode = decoder_output(sample_decode_h_l1)
+vae_model = keras_model(inputs = input_layer, outputs = sample_final_decode, name = "vae_model")
+summary(vae_model)
+
+vae_loss = function(x, vae_output){
+  reconstruction_loss <- k_mean(k_square(x - vae_output), axis = -1) * latent_space_dim
+  kl_loss <- -0.5 * k_sum(1 + z_log_var - k_square(z_mean) - k_exp(z_log_var), axis = -1)
+  k_mean(reconstruction_loss + kl_loss)
+}
+
+# Custom loss function
+ reconstruction_loss <- function(x, vae_output) {
+    k_mean(k_square(x - vae_output), axis = -1)
+  }
+
+vae_model %>% compile(loss = reconstruction_loss, optimizer = "adam", metrics = c("accuracy", "mse"))
+
+
+vae = vae_model %>% fit(x_train, x_train,
+            epochs = epochs, batch_size = batch_size,
+            validation_data = list(as.matrix(x_validation), as.matrix(x_validation))
+            )
+plot(vae)
+visual_vae_latent_data(latent_space_dim,input_layer, z, x_train)
+return(list(vae_model = vae_model))
+}
+
+visual_vae_latent_data = function(latent_space_dim,input_layer, z, x_train){
+  encoder_model   = keras_model(inputs = input_layer, outputs = z, name = "encoder_model")
+  embedded_points = predict(encoder_model, x_train)%>% as.tibble()
+  if(latent_space_dim == 1){
+    plot(embedded_points$V1)
+  }else if(latent_space_dim == 2){
+        plot(embedded_points$V1, embedded_points$V2)
+    
+  }else if(latent_space_dim == 3){
+     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Variational Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = "blue", cex.axis = 0.5)
+  }else {
+    print("Cannot visualize higher than 3-D")
+  }
+}
+
+
+
+vae_mse = rep(NA, 5)
+
+for(k in 1:5){
+ train_vae_model = variational_autoencoder(
+                        latent_space_dim = k,
+                        batch_size = 256,
+                        x_train = as.matrix(train_X_continous_std_oversampled), 
+                        x_validation = as.matrix(validation_X_continous_std),
+                        epochs = 10
+                        )
+ vae_stats = evaluate(
+   train_vae_model$vae_model,
+   as.matrix(train_X_continous_std_oversampled),
+   as.matrix(train_X_continous_std_oversampled)
+   )
+ vae_mse[k] = vae_stats["loss"]
+}
+
+vae_mse
+
+```
+
 
 ### Technique evaluation
 
@@ -708,7 +857,8 @@ objects_to_keep <- c("credit_default_data",
                      "encoder",
                      "autoencoder_model",
                      "autoencoder_weights",
-                     "autoencoder_mse"
+                     "autoencoder_mse",
+                     "vae_mse"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
@@ -729,7 +879,7 @@ for(k in 1:20){
 
 
 
-df <- data.frame(k = c(1:20, 1:5), mse = c(pca_mse, autoencoder_mse), method = c(rep("pca", 20), rep("autoencoder", 5)))
+df <- data.frame(k = c(1:20, 1:5, 1:5), mse = c(pca_mse, autoencoder_mse, vae_mse), method = c(rep("pca", 20), rep("autoencoder", 5),rep("VAE", 5)))
 ggplot(df, aes(x = k, y = mse, col = method)) + geom_line()
 
 ```
