@@ -774,12 +774,24 @@ vae = vae_model %>% fit(x_train, x_train,
             validation_data = list(as.matrix(x_validation), as.matrix(x_validation))
             )
 plot(vae)
-visual_vae_latent_data(latent_space_dim,input_layer, z, x_train)
+visual_vae_latent_data(latent_space_dim,input_layer, z, x_train, vae_model)
 return(list(vae_model = vae_model))
 }
 
-visual_vae_latent_data = function(latent_space_dim,input_layer, z, x_train){
+visual_vae_latent_data = function(latent_space_dim,input_layer, z, x_train, vae_model){
+  if(latent_space_dim >3){
+  return(NULL)
+}
+  vae_weights = 
+  vae_model %>%
+  get_weights()
+  
+  file_name = paste("vae_weights", latent_space_dim, sep = "-")
+  save_model_weights_hdf5(object = vae_model,filepath = paste0("./data/", file_name, ".hdf5"),overwrite = TRUE)
+  
   encoder_model   = keras_model(inputs = input_layer, outputs = z, name = "encoder_model")
+  encoder_model %>% load_model_weights_hdf5(filepath = paste0("./data/", file_name, ".hdf5"),skip_mismatch = TRUE,by_name = TRUE)
+  
   embedded_points = predict(encoder_model, x_train)%>% as.tibble()
   if(latent_space_dim == 1){
     plot(embedded_points$V1)
@@ -799,11 +811,11 @@ vae_mse = rep(NA, 5)
 
 for(k in 1:5){
  train_vae_model = variational_autoencoder(
-                        latent_space_dim = k,
+                        latent_space_dim = 3,
                         batch_size = 256,
                         x_train = as.matrix(train_X_continous_std_oversampled), 
                         x_validation = as.matrix(validation_X_continous_std),
-                        epochs = 10
+                        epochs = 100
                         )
  vae_stats = evaluate(
    train_vae_model$vae_model,
