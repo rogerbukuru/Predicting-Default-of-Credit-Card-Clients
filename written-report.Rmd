@@ -36,29 +36,32 @@ credit_default_data = as_tibble(read_xls(file_path))
 colnames(credit_default_data) = as.character(credit_default_data[1, ])
                                 
 credit_default_data = credit_default_data[-1,]
-
+credit_default_data = credit_default_data[,-1]
 
 ```
 
 
 # Exploratory Data Analysis
 
-## Feature Analysis
+## Describe Data
 
-```{r, echo = FALSE}
+```{r, table_figure, fig.cap="Table 1: Example Table", echo = FALSE}
 objects_to_keep <- c("credit_default_data")
 rm(list = setdiff(ls(), objects_to_keep))
 
 credit_default_data = credit_default_data %>%
                       mutate(across(where(is.character), as.numeric))
 
-colnames(credit_default_data)
+#colnames(credit_default_data_summary)
 #summary(credit_default_data)
-stats = describe(credit_default_data, na.rm = FALSE, skew= FALSE)
-round(stats,2)
+stats = describe(credit_default_data, na.rm = FALSE, skew= FALSE,  check=TRUE, omit = TRUE)
+#round(stats,2)
+kable(round(stats,2), caption = "Features Summary Statistics")
 ```
 - Education and Marriage have some unreported categories
-- 
+
+## Response Variable Distribution
+
 ```{r, echo = FALSE}
 objects_to_keep <- c("credit_default_data")
 rm(list = setdiff(ls(), objects_to_keep))
@@ -91,81 +94,14 @@ ggplot(agg_data, aes(x = factor(Class, labels = c("No", "Yes")), y = Count, fill
   theme(legend.position = "none")  # Remove the legend
 ```
 
-```{r, echo = FALSE}
-objects_to_keep <- c("credit_default_data")
-rm(list = setdiff(ls(), objects_to_keep))
-limit_balances  = credit_default_data |>
-                  drop_na(LIMIT_BAL) |>
-                  select(LIMIT_BAL) |>
-                  as.matrix() |>
-                  as.vector() |>
-                  as.numeric()
 
-
-average_limit_balance = mean(limit_balances)
-range(limit_balances)
-
-male_average_credit_limit = credit_default_data |>
-                            filter(SEX == 1) |>
-                            select(LIMIT_BAL) |>
-                            as.matrix() |>
-                            as.vector() |>
-                            as.numeric() |>
-                            mean()
-
-female_average_credit_limit = credit_default_data |>
-                            filter(SEX == 2) |>
-                            select(LIMIT_BAL) |>
-                            as.matrix() |>
-                            as.vector() |>
-                            as.numeric() |>
-                            mean()
-
-minimum = min(limit_balances)
-first_quantile = quantile(limit_balances, 0.25)
-median_point = quantile(limit_balances, 0.50)
-third_quantile = quantile(limit_balances, 0.75)
-maximum = max(limit_balances)
-
-ggplot(credit_default_data, aes(x="", y=limit_balances)) +
-  geom_boxplot(fill="lightblue", color="black") +
-  labs(title="Credit Limit Five Number Summary", x="", y="Credit Limit") +
-  theme_minimal()
-```
-
+## Data Analysis and Cleaning
 
 
 ```{r, echo = FALSE}
 objects_to_keep <- c("credit_default_data")
 rm(list = setdiff(ls(), objects_to_keep))
-credit_spending = credit_default_data %>%
-                  select(LIMIT_BAL, BILL_AMT1) %>%
-                  mutate(across(everything(), as.numeric)) %>%
-                  mutate(`Credit Utilization` = BILL_AMT1) %>%
-                  ungroup()
-credit_spending = credit_spending %>%
-                  mutate(`Percentage Utilized`= round((`Credit Utilization`/LIMIT_BAL)*100,2))
 
-
-ggplot(credit_spending, aes(x = `Percentage Utilized`)) +
-  geom_histogram(aes(y=..density..),binwidth = 5, # Adjust binwidth based on your data's distribution and scale
-                 fill = "steelblue", color = "black") +
-  xlim(0, 200)+
-  labs(title = "Distribution of Credit Utilization",
-       x = "Credit Utilization (%)",
-       y = "# of Customers") +
-  theme_minimal() 
-```
-
-
-
-
-## Data Cleaning
-
-
-```{r, echo = FALSE}
-objects_to_keep <- c("credit_default_data")
-rm(list = setdiff(ls(), objects_to_keep))
 # Marriage and Education and to other cateogry
 credit_default_data = credit_default_data %>%
                       rename(PAY_1 = PAY_0)%>% 
@@ -206,33 +142,167 @@ education_stats_2 = credit_default_data%>%
 education_stats_2
 
 
-```
-
-
-```{r, echo = FALSE}
-objects_to_keep <- c("credit_default_data")
-rm(list = setdiff(ls(), objects_to_keep))
-# Payment History where value is -2 and 0, aggregate under -1
+# Payment History where value is -2 and -1, aggregate under 0
 
 payment_history = c("PAY_1", "PAY_2", "PAY_3", "PAY_4", "PAY_5","PAY_6")
 
 for (p in payment_history) {
-  indices = which(credit_default_data[,p] <= 0)
-  credit_default_data[indices, p] = -1
+  indices = which(credit_default_data[,p] < 0)
+  credit_default_data[indices, p] = 0
 }
-
 ```
 
+
+## Summary Statistics
+
 ```{r, echo = FALSE}
+
 objects_to_keep <- c("credit_default_data")
-rm(list = setdiff(ls(), objects_to_keep))
 categorical_feature_names = c("SEX", "EDUCATION", "MARRIAGE", "DEFAULT_PAYMENT_NEXT_MONTH")
 credit_default_data = credit_default_data%>%
                       mutate(across(matches(categorical_feature_names), as.factor))
 
-#summary(credit_default_data)
-# Split Data
+stats_2 = describe(credit_default_data, na.rm = FALSE, skew= FALSE, omit = TRUE)
+#round(stats,2)
+kable(round(stats_2,2), caption = "Features Summary Statistics")
 
+rm(list = setdiff(ls(), objects_to_keep))
+limit_balances  = credit_default_data |>
+                  drop_na(LIMIT_BAL) |>
+                  select(LIMIT_BAL) |>
+                  as.matrix() |>
+                  as.vector() |>
+                  as.numeric()
+
+
+average_limit_balance = mean(limit_balances)
+range(limit_balances)
+
+male_average_credit_limit = credit_default_data |>
+                            filter(SEX == 1) |>
+                            select(LIMIT_BAL) |>
+                            as.matrix() |>
+                            as.vector() |>
+                            as.numeric() |>
+                            mean()
+
+female_average_credit_limit = credit_default_data |>
+                            filter(SEX == 2) |>
+                            select(LIMIT_BAL) |>
+                            as.matrix() |>
+                            as.vector() |>
+                            as.numeric() |>
+                            mean()
+
+minimum = min(limit_balances)
+first_quantile = quantile(limit_balances, 0.25)
+median_point = quantile(limit_balances, 0.50)
+third_quantile = quantile(limit_balances, 0.75)
+maximum = max(limit_balances)
+
+ggplot(credit_default_data, aes(x="", y=limit_balances)) +
+  geom_boxplot(fill="lightblue", color="black") +
+  labs(title="Credit Limit Five Number Summary", x="", y="Credit Limit") +
+  theme_minimal()
+
+
+# Credit Spending
+credit_spending = credit_default_data %>%
+                  select(LIMIT_BAL, BILL_AMT1) %>%
+                  mutate(across(everything(), as.numeric)) %>%
+                  mutate(`Credit Utilization` = BILL_AMT1) %>%
+                  ungroup()
+credit_spending = credit_spending %>%
+                  mutate(`Percentage Utilized`= round((`Credit Utilization`/LIMIT_BAL)*100,2))
+
+
+ggplot(credit_spending, aes(x = `Percentage Utilized`)) +
+  geom_histogram(aes(y=..density..),binwidth = 5, # Adjust binwidth based on your data's distribution and scale
+                 fill = "steelblue", color = "black") +
+  xlim(0, 200)+
+  labs(title = "Distribution of Credit Utilization",
+       x = "Credit Utilization (%)",
+       y = "# of Customers") +
+  theme_minimal() 
+```
+
+## Correlation Analysis
+
+```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data",
+                     "training_data",
+                     "validation_data",
+                     "testing_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+library(corrplot)
+
+#summary(X_categorical)
+
+# corr_matrix = cor(train_X_continous)
+# col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+# corrplot(corr_matrix, method = "color", col = col(200), 
+#          type = "full", order = "original", 
+#          addCoef.col = "white",
+#          tl.col = "black", tl.srt = 45,
+#          tl.pos = "lt",
+#          tl.cex = 0.6, cl.cex = 0.7,
+#          number.cex = 0.5
+#          )
+
+# Standardize Data
+
+X_continous = credit_default_data%>%
+              select(where(is.numeric))
+              
+corr_matrix = cor(as.matrix(X_continous))
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(corr_matrix, method = "color", col = col(200),
+        type = "full", order = "original",
+        addCoef.col = "white",
+        tl.col = "black", tl.srt = 45,
+       tl.pos = "lt",
+       tl.cex = 0.6, cl.cex = 0.7,
+        number.cex = 0.5
+       )
+```
+
+We observe from the correlation matrix, that some features have high correlations with each other
+
+- BILL_AMT1 and BILL_AMT2 have  p = 0.95
+- BILL_AMT2 and BILL_AMT3 have  p = 0.92
+- BILL_AMT4 and BILL_AMT5 have  p = 0.94
+
+
+# Data Preprocessing
+
+
+## Categorical Features
+
+```{r, echo = FALSE}
+library(caret)
+dummies = dummyVars("~.", data = credit_default_data[, -24], fullRank = FALSE)
+
+data_transformed <- predict(dummies, newdata = credit_default_data[, -24])%>%as.tibble()
+credit_default_data = data_transformed%>%
+                         mutate(DEFAULT_PAYMENT_NEXT_MONTH = credit_default_data[, 24])%>%
+                         select(-SEX.2, -EDUCATION.4, -MARRIAGE.3) # Remove columns to ensure full rank
+
+```
+
+## Dataset Partition
+
+```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data", "X_continous")
+rm(list = setdiff(ls(), objects_to_keep))
+#summary(credit_default_data)
+
+# Split Data
 set.seed(10032024)
 dataSize = nrow(credit_default_data)
 trainingSize = floor(0.60*dataSize)
@@ -276,61 +346,10 @@ mu_x_continous = apply(train_X_continous, 2, mean)
 sigma_x_continous = apply(train_X_continous, 2, sd)
 
 train_X_continous_std = as.matrix(apply(train_X_continous, 2, function(train_X_continous)((train_X_continous - mean(train_X_continous))/sd(train_X_continous))) %>% as.tibble())
-
 ```
 
-## Correlation Analysis
 
-```{r, echo = FALSE}
-objects_to_keep <- c("credit_default_data",
-                     "training_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous"
-                     )
-rm(list = setdiff(ls(), objects_to_keep))
-library(corrplot)
-
-#summary(X_categorical)
-
-corr_matrix = cor(train_X_continous)
-col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
-corrplot(corr_matrix, method = "color", col = col(200), 
-         type = "full", order = "original", 
-         addCoef.col = "white",
-         tl.col = "black", tl.srt = 45,
-         tl.pos = "lt",
-         tl.cex = 0.6, cl.cex = 0.7,
-         number.cex = 0.5
-         )
-
-# Standardize Data
-
-
-
-#corr_matrix_std = cor(X_continous_std)
-#col_std <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
-#corrplot(corr_matrix_std, method = "color", col_std = col(200), 
-#         type = "full", order = "original", 
-#         addCoef.col = "white",
-#         tl.col = "black", tl.srt = 45,
-#        tl.pos = "lt",
-#        tl.cex = 0.6, cl.cex = 0.7,
-#         number.cex = 0.5
-#        )
-```
-
-We observe from the correlation matrix, that some features have high correlations with each other
-
-- BILL_AMT1 and BILL_AMT2 have  p = 0.95
-- BILL_AMT2 and BILL_AMT3 have  p = 0.92
-- BILL_AMT4 and BILL_AMT5 have  p = 0.94
-
-## Feature Selection
-
-
+# Feature Engineering
 
 ## Feature Extraction
 
@@ -341,6 +360,8 @@ We observe from the correlation matrix, that some features have high correlation
 ```{r, echo=FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
+                     "validation_data",
+                     "testing_data",
                      "train_X_continous",
                      "validation_X_continous",
                      "test_X_continous",
@@ -415,6 +436,8 @@ ggplot(agg_data_2, aes(x = factor(Class, labels = c("No", "Yes")), y = Count, fi
 ```{r, echo = FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
+                     "validation_data",
+                     "testing_data",
                      "train_X_continous",
                      "validation_X_continous",
                      "test_X_continous",
@@ -439,6 +462,8 @@ library(MVN)
 ```{r, echo= FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
+                     "validation_data",
+                     "testing_data",
                      "train_X_continous",
                      "validation_X_continous",
                      "test_X_continous",
@@ -491,6 +516,8 @@ colnames(pca_scores) = colnames(eigenvectors)
 ```{r, echo = FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
+                     "validation_data",
+                     "testing_data",
                      "train_X_continous",
                      "validation_X_continous",
                      "test_X_continous",
@@ -518,6 +545,8 @@ scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main =
 ```{r, echo=FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
+                     "validation_data",
+                     "testing_data",
                      "train_X_continous",
                      "validation_X_continous",
                      "test_X_continous",
@@ -639,6 +668,8 @@ autoencoder_mse = rep(NA, 5)
 
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
+                     "validation_data",
+                     "testing_data",
                      "train_X_continous",
                      "validation_X_continous",
                      "test_X_continous",
@@ -683,11 +714,15 @@ rm(list = setdiff(ls(), objects_to_keep))
 # scatterplot3d(x = classic$rotation[,1], y = classic$rotation[,2], z = classic$rotation[,3], main = "Principal Components",xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
 ```
+
+
 ### Variational Autoencoders
 
 ```{r, echo = FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
+                     "validation_data",
+                     "testing_data",
                      "train_X_continous",
                      "validation_X_continous",
                      "test_X_continous",
@@ -809,23 +844,23 @@ visual_vae_latent_data = function(latent_space_dim,input_layer, z, x_train, vae_
 
 vae_mse = rep(NA, 5)
 
-for(k in 1:5){
- train_vae_model = variational_autoencoder(
-                        latent_space_dim = 3,
-                        batch_size = 256,
-                        x_train = as.matrix(train_X_continous_std_oversampled), 
-                        x_validation = as.matrix(validation_X_continous_std),
-                        epochs = 100
-                        )
- vae_stats = evaluate(
-   train_vae_model$vae_model,
-   as.matrix(train_X_continous_std_oversampled),
-   as.matrix(train_X_continous_std_oversampled)
-   )
- vae_mse[k] = vae_stats["loss"]
-}
-
-vae_mse
+# for(k in 1:5){
+#  train_vae_model = variational_autoencoder(
+#                         latent_space_dim = k,
+#                         batch_size = 256,
+#                         x_train = as.matrix(train_X_continous_std_oversampled), 
+#                         x_validation = as.matrix(validation_X_continous_std),
+#                         epochs = 300
+#                         )
+#  vae_stats = evaluate(
+#    train_vae_model$vae_model,
+#    as.matrix(train_X_continous_std_oversampled),
+#    as.matrix(train_X_continous_std_oversampled)
+#    )
+#  vae_mse[k] = vae_stats["loss"]
+# }
+# 
+# vae_mse
 
 ```
 
@@ -836,6 +871,8 @@ vae_mse
 
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
+                     "validation_data",
+                     "testing_data",
                      "train_X_continous",
                      "validation_X_continous",
                      "test_X_continous",
@@ -881,9 +918,62 @@ ggplot(df, aes(x = k, y = mse, col = method)) + geom_line()
 
 # Model Engineering
 
+
+
 ## Linear Discriminant Analysis
 
 ## Support Vector Machines
+
+```{r, echo=FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "validation_data",
+                     "testing_data",
+                     "train_X_continous",
+                     "validation_X_continous",
+                     "test_X_continous",
+                     "mu_x_continous",
+                     "sigma_x_continous",
+                     "train_X_continous_oversampled",
+                     "train_X_continous_std_oversampled",
+                     "mu_x_continous_oversampled",
+                     "sigma_x_continous_oversampled",
+                     "pca_scores",
+                     "eigenvectors",
+                     "input_layer",
+                     "encoder",
+                     "autoencoder_model",
+                     "autoencoder_weights",
+                     "autoencoder_mse",
+                     "vae_mse"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+
+library(e1071)
+
+svm_model = svm(DEFAULT_PAYMENT_NEXT_MONTH~ ., 
+    data = training_data,
+    type = "C-classification",
+    kernel = "linear",
+    scale = TRUE,
+    cost = 2
+    )
+
+summary(svm_model)
+
+
+
+#plot(svm_model, training_data)
+
+svm_train_pred = predict(svm_model, training_data[, c(1:24)])
+mean(svm_train_pred==as.numeric(as.matrix(training_data[,25])))
+
+
+svm_train_pred = predict(svm_model, testing_data[, c(1:24)])
+mean(svm_train_pred==as.numeric(as.matrix(testing_data[,25])))
+
+
+```
 
 # Model Evaluation
 
