@@ -389,14 +389,22 @@ testing_data_total_non_defaulters = nrow(testing_data_non_defaulters)
 ## Feature Scaling
 
 ```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data", "training_data", "testing_data")
+rm(list = setdiff(ls(), objects_to_keep))
 # Standardization
-
 training_data_x = training_data[, -27]
 
-mu_train_data = apply(training_data_x, 2, mean)
+mu_training_data = apply(training_data_x, 2, mean)
 sigma_training_data = apply(training_data_x, 2, sd)
 
 training_data_x_std = as.matrix(apply(training_data_x, 2, function(training_data_x)((training_data_x - mean(training_data_x))/sd(training_data_x))) %>% as.tibble())
+
+testing_data_x = testing_data[, -27]
+
+mu_testing_data = apply(testing_data_x, 2, mean)
+sigma_testing_data = apply(testing_data_x, 2, sd)
+
+testing_data_x_std = as.matrix(apply(testing_data_x, 2, function(testing_data_x)((testing_data_x - mean(testing_data_x))/sd(testing_data_x))) %>% as.tibble())
 ```
 
 
@@ -408,13 +416,11 @@ training_data_x_std = as.matrix(apply(training_data_x, 2, function(training_data
 ```{r, echo=FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
-                     "validation_data",
                      "testing_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous"
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 #library(smotefamily)
@@ -427,25 +433,6 @@ library(DMwR)
 #result <- SMOTE(form = target_variable ~ ., dat = your_data, perc.over = 100, k = 5)
 
 training_data_smote <- SMOTE(DEFAULT_PAYMENT_NEXT_MONTH ~ ., data = as.data.frame(training_data), perc.over = 200, k = 5)
-
-# train_X_categorical_oversampled = train_oversampled_data %>%
-#               select(where(is.factor))
-# train_X_categorical_oversampled = train_X_categorical_oversampled[,-4]
-# train_X_continous_oversampled = train_oversampled_data %>%
-#               select(where(is.double))
-# train_X_continous_oversampled = train_X_continous_oversampled[, -1]
-
-# # Standardization
-# mu_x_continous_oversampled = apply(train_X_continous_oversampled, 2, mean)
-# sigma_x_continous_oversampled  = apply(train_X_continous_oversampled, 2, sd)
-# 
-# train_X_continous_std_oversampled  = as.matrix(apply(train_X_continous_oversampled, 2, function(train_X_continous_oversampled)((train_X_continous_oversampled - mean(train_X_continous_oversampled))/sd(train_X_continous_oversampled))) %>% as.tibble())
-# 
-# mu_x_continous_oversampled = apply(train_X_continous_oversampled, 2, mean)
-# sigma_x_continous_oversampled  = apply(train_X_continous_oversampled, 2, sd)
-# 
-# validation_X_continous_std  = as.matrix(apply(validation_X_continous, 2, function(validation_X_continous)((validation_X_continous - mean(validation_X_continous))/sd(validation_X_continous))) %>% as.tibble())
-
 
 training_data_response_smote = training_data_smote%>%
                               select(DEFAULT_PAYMENT_NEXT_MONTH)
@@ -470,6 +457,13 @@ ggplot(training_data_agg_smote, aes(x = factor(DEFAULT_PAYMENT_NEXT_MONTH, label
   theme_minimal()+
   theme(legend.position = "none")  # Remove the legend
 
+
+training_data_x_smote = training_data_smote[, -27]
+
+mu_training_data_smote = apply(training_data_x_smote, 2, mean)
+sigma_training_data_smote = apply(training_data_x_smote, 2, sd)
+
+training_data_x_std_smote = as.matrix(apply(training_data_x_smote, 2, function(training_data_x_smote)((training_data_x_smote - mean(training_data_x_smote))/sd(training_data_x_smote))) %>% as.tibble())
 ```
 
 # Feature Engineering
@@ -481,25 +475,23 @@ ggplot(training_data_agg_smote, aes(x = factor(DEFAULT_PAYMENT_NEXT_MONTH, label
 ```{r, echo= FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
-                     "validation_data",
                      "testing_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous",
-                     "train_X_continous_oversampled",
-                     "train_X_continous_std_oversampled",
-                     "mu_x_continous_oversampled",
-                     "sigma_x_continous_oversampled",
-                     "validation_X_continous_std"
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 library(ggplot2)
 library(scatterplot3d)
 library(plotly)
   
-sigma_matrix   = cov(train_X_continous_std_oversampled)
+sigma_matrix   = cov(training_data_x_std_smote)
 eigen_decomp   = eigen(sigma_matrix)
 
 eigenvalues   = eigen_decomp$values 
@@ -515,46 +507,69 @@ pca_data = data.frame(PCA = 1:nrow(sigma_matrix), `Variance Explained` = varianc
 
 ggplot(pca_data, mapping = aes(x = PCA, y = Variance.Explained)) +
       geom_point() +
-      geom_line()
+      geom_line()+
+      labs(x = "Principal Components", y = "Variance Explained", title = "PCA Scree Plot")+
+      theme_minimal()
+     
 
 # Suggest that the first 4 PCA
-var_first_4 = sum(variance_explained[1:4])
+var_first_11 = sum(variance_explained[1:14])
 
 variance_explained
 
-pca_scores =  t(tcrossprod(eigenvectors, train_X_continous_std_oversampled)) %>% as.tibble()
+pca_scores =  t(tcrossprod(eigenvectors, training_data_x_std_smote)) %>% as.tibble()
 colnames(pca_scores) = colnames(eigenvectors)
 
-#classic = prcomp(train_X_continous_std_oversampled, retx = TRUE, center = FALSE, scale. = FALSE)
-
-#classic$rotation == eigenvectors
-
-#classic$x
+# Perform clustering on the latent space representations
+    num_clusters <- 5  # Specify the desired number of clusters
+    kmeans_result <- kmeans(pca_scores, centers = num_clusters)
+    # Assign colors to each cluster
+    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
+    point_colors <- cluster_colors[kmeans_result$cluster]
+scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
+              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = point_colors, cex.axis = 0.5)
 ```
 
 ```{r, echo = FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
-                     "validation_data",
                      "testing_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous",
-                     "train_X_continous_oversampled",
-                     "train_X_continous_std_oversampled",
-                     "mu_x_continous_oversampled",
-                     "sigma_x_continous_oversampled",
-                     "validation_X_continous_std",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
                      "pca_scores",
                      "eigenvectors"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
-scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
-              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
+classic_pca = prcomp(training_data_x_std_smote, retx = TRUE, center = FALSE, scale. = FALSE)
+eigenvalues = classic_pca$sdev^2
+total_variance = sum(eigenvalues)
+variance_explained = eigenvalues/total_variance
+pca_data = data.frame(PCA = 1:nrow(classic_pca$rotation), `Variance Explained` = variance_explained)
 
+# Suggest that the first 4 PCA
+var_first_11 = sum(variance_explained[1:11])
+
+var_first_11
+# Scree Plot
+ggplot(pca_data, mapping = aes(x = PCA, y = Variance.Explained)) +
+      geom_point() +
+      geom_line()
+
+    num_clusters <- 5  # Specify the desired number of clusters
+    kmeans_result <- kmeans(pca_scores, centers = num_clusters)
+    # Assign colors to each cluster
+    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
+    point_colors <- cluster_colors[kmeans_result$cluster]
+scatterplot3d(x = classic_pca$x[,1], y = classic_pca$x[,2], z = classic_pca$x[,3], main = "Principal Components",
+              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = point_colors, cex.axis = 0.5)
 ```
 
 
@@ -564,35 +579,32 @@ scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main =
 ```{r, echo=FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
-                     "validation_data",
                      "testing_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous",
-                     "train_X_continous_oversampled",
-                     "train_X_continous_std_oversampled",
-                     "validation_X_continous_std",
-                     "mu_x_continous_oversampled",
-                     "sigma_x_continous_oversampled",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
                      "pca_scores",
                      "eigenvectors"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
-# Autoencoder Using relu 
+
 
 library(keras)
 
-
-train_autoencoder = function(epochs = 100, code_size = 1) {
+train_autoencoder = function(epochs = 100, code_size = 1, x_train) {
   
-total_features = ncol(train_X_continous_std_oversampled)
+total_features = ncol(x_train)
 input_layer = layer_input(shape = c(total_features))
 
 encoder = 
   input_layer %>%
-  layer_dense(units = total_features/2, activation = "relu") %>%# encoder layer 1
+  layer_dense(units = total_features/2, activation = "tanh") %>%# encoder layer 1
   #layer_batch_normalization() %>%  # Batch normalization layer to normalize the activations of the input layer
   #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
   #layer_dense(units = total_features/2, activation = "relu") %>%#Hidden layer 2
@@ -600,7 +612,7 @@ encoder =
   
 decoder = 
   encoder %>%
-  layer_dense(units = total_features/2 , activation = "relu") %>% # Decoder Layer 1
+  layer_dense(units = total_features/2 , activation = "tanh") %>% # Decoder Layer 1
   #layer_dropout(rate = 0.1) %>%  #Dropout layer to prevent overfitting by randomly dropping 10% of the input units.
   #layer_dense(units = 15, activation = "relu") %>%#Hidden layer 2
   layer_dense(units = total_features) # Reconstructed/Output layer
@@ -617,8 +629,8 @@ summary(autoencoder_model)
 
   auto_associative =
   autoencoder_model %>%
-  fit(as.matrix(train_X_continous_std_oversampled), 
-             as.matrix(train_X_continous_std_oversampled),
+  fit(as.matrix(x_train), 
+             as.matrix(x_train),
              epochs = epochs,
              batch_size = 256,
              shuffle = TRUE,
@@ -627,12 +639,13 @@ summary(autoencoder_model)
              )
   plot(auto_associative)
   if(code_size >= 1 & code_size <=3){
-  visualize_compressed_data(autoencoder_model,input_layer, encoder, code_size)
+  visualize_compressed_data(autoencoder_model,input_layer, encoder, code_size,x_train)
   }
   return(list(aem = autoencoder_model))
 }
 
-visualize_compressed_data = function(autoencoder_model, input_layer, encoder, code_size = 1){
+visualize_compressed_data = function(autoencoder_model, input_layer, encoder, code_size = 1, x_train){
+  
 if(code_size >3){
   return(NULL)
 }
@@ -656,7 +669,7 @@ encoder_model %>% compile(
 # Visualize how model has embedded data in 3-dimensions
 
 embedded_points = encoder_model %>%
-                  predict_on_batch(x = as.matrix(train_X_continous_std_oversampled)) %>%
+                  predict_on_batch(x = as.matrix(x_train)) %>%
                   as.tibble()
 #plot(embedded_points$V1, embedded_points$V2)
   if(code_size == 1){
@@ -665,51 +678,27 @@ embedded_points = encoder_model %>%
         plot(embedded_points$V1, embedded_points$V2)
     
   }else if(code_size == 3){
-     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = "blue", cex.axis = 0.5)
+       # Perform clustering on the latent space representations
+    num_clusters <- 5  # Specify the desired number of clusters
+    kmeans_result <- kmeans(embedded_points, centers = num_clusters)
+    # Assign colors to each cluster
+    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
+    point_colors <- cluster_colors[kmeans_result$cluster]
+    
+     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors, cex.axis = 0.5)
   }else {
     print("Cannot visualize higher than 3-D")
   }
 }
 autoencoder_mse = rep(NA, 5)
 
-#for(k in 1:5){
-#  train_aem = train_autoencoder(epochs = 100, code_size = k)
-#  autoencoder_stats = evaluate(train_aem$aem,    #as.matrix(train_X_continous_std_oversampled),as.matrix(train_X_continous_std_oversampled))
-#  autoencoder_mse[k] = autoencoder_stats["loss"]
-#}
+for(k in 1:1){
+  train_aem = train_autoencoder(epochs = 100, code_size = 3, training_data_x_std_smote)
+  autoencoder_stats = evaluate(train_aem$aem,as.matrix(training_data_x_std_smote),as.matrix(training_data_x_std_smote))
+  autoencoder_mse[k] = autoencoder_stats["loss"]
+}
 
-#autoencoder_mse
-
-```
-
-
-
-```{r, echo = FALSE}
-
-objects_to_keep <- c("credit_default_data", 
-                     "training_data",
-                     "validation_data",
-                     "testing_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous",
-                     "train_X_continous_oversampled",
-                     "train_X_continous_std_oversampled",
-                     "mu_x_continous_oversampled",
-                     "sigma_x_continous_oversampled",
-                     "validation_X_continous_std",
-                     "pca_scores",
-                     "eigenvectors",
-                     "input_layer",
-                     "encoder",
-                     "autoencoder_model",
-                     "autoencoder_mse"
-                     )
-rm(list = setdiff(ls(), objects_to_keep))
-
-
+autoencoder_mse
 
 ```
 
@@ -741,26 +730,22 @@ rm(list = setdiff(ls(), objects_to_keep))
 ```{r, echo = FALSE}
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
-                     "validation_data",
                      "testing_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous",
-                     "train_X_continous_oversampled",
-                     "train_X_continous_std_oversampled",
-                     "mu_x_continous_oversampled",
-                     "sigma_x_continous_oversampled",
-                     "validation_X_continous_std",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
                      "pca_scores",
                      "eigenvectors",
-                     "input_layer",
-                     "encoder",
-                     "autoencoder_model",
                      "autoencoder_mse"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
+
 sampling_layer <- new_layer_class(
   classname = "SamplingLayer",
   initialize = function(latent_dim) {
@@ -781,14 +766,14 @@ sampling_layer <- new_layer_class(
   }
 )
 
-variational_autoencoder = function(latent_space_dim,batch_size, x_train, x_validation, epochs){
+variational_autoencoder = function(latent_space_dim,batch_size, x_train, epochs, num_clusters){
   
 total_features = ncol(x_train)
 input_layer = layer_input(shape = c(total_features), name="inputLayer")
 
 encoder_inputs = 
   input_layer %>%
-  layer_dense(units = total_features/2, activation = "relu", name = "encoderHiddenL1")#Hidden layer 1
+  layer_dense(units = total_features/2, activation = "tanh", name = "encoderHiddenL1")#Hidden layer 1
 
 
 # Latent Space
@@ -802,8 +787,8 @@ encoder = keras_model(inputs = input_layer, outputs = list(z_mean, z_log_var,z),
 summary(encoder)
 
 
-decoder_hidden_l1 = layer_dense(units = total_features/2 , activation = "relu", name="decoderHiddenL1") #Hidden layer 1
-decoder_output = layer_dense(units = total_features, activation = "relu", name = "decoderOutput") # Reconstructed/Output layer
+decoder_hidden_l1 = layer_dense(units = total_features/2 , activation = "tanh", name="decoderHiddenL1") #Hidden layer 1
+decoder_output = layer_dense(units = total_features, activation = "tanh", name = "decoderOutput") # Reconstructed/Output layer
 
 sample_decode_h_l1 = decoder_hidden_l1(z)
 sample_final_decode = decoder_output(sample_decode_h_l1)
@@ -855,7 +840,14 @@ visual_vae_latent_data = function(latent_space_dim,input_layer, z, x_train, vae_
         plot(embedded_points$V1, embedded_points$V2)
     
   }else if(latent_space_dim == 3){
-     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Variational Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = "blue", cex.axis = 0.5)
+    # Perform clustering on the latent space representations
+    num_clusters <- 5  # Specify the desired number of clusters
+    kmeans_result <- kmeans(embedded_points, centers = num_clusters)
+    # Assign colors to each cluster
+    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
+    point_colors <- cluster_colors[kmeans_result$cluster]
+    
+     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Variational Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors, cex.axis = 0.5)
   }else {
     print("Cannot visualize higher than 3-D")
   }
@@ -865,23 +857,22 @@ visual_vae_latent_data = function(latent_space_dim,input_layer, z, x_train, vae_
 
 vae_mse = rep(NA, 5)
 
-# for(k in 1:5){
-#  train_vae_model = variational_autoencoder(
-#                         latent_space_dim = k,
-#                         batch_size = 256,
-#                         x_train = as.matrix(train_X_continous_std_oversampled), 
-#                         x_validation = as.matrix(validation_X_continous_std),
-#                         epochs = 300
-#                         )
-#  vae_stats = evaluate(
-#    train_vae_model$vae_model,
-#    as.matrix(train_X_continous_std_oversampled),
-#    as.matrix(train_X_continous_std_oversampled)
-#    )
-#  vae_mse[k] = vae_stats["loss"]
-# }
-# 
-# vae_mse
+for(k in 1:1){
+ train_vae_model = variational_autoencoder(
+                        latent_space_dim = 3,
+                        batch_size = 256,
+                        x_train = as.matrix(training_data_x_std_smote),
+                        epochs = 100
+                        )
+ vae_stats = evaluate(
+   train_vae_model$vae_model,
+   as.matrix(training_data_x_std_smote),
+   as.matrix(training_data_x_std_smote)
+   )
+ vae_mse[k] = vae_stats["loss"]
+}
+
+vae_mse
 
 ```
 
@@ -892,28 +883,22 @@ vae_mse = rep(NA, 5)
 
 objects_to_keep <- c("credit_default_data", 
                      "training_data",
-                     "validation_data",
                      "testing_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous",
-                     "train_X_continous_oversampled",
-                     "train_X_continous_std_oversampled",
-                     "mu_x_continous_oversampled",
-                     "sigma_x_continous_oversampled",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
                      "pca_scores",
                      "eigenvectors",
-                     "input_layer",
-                     "encoder",
-                     "autoencoder_model",
-                     "autoencoder_weights",
                      "autoencoder_mse",
                      "vae_mse"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
-
 
 pca_stats = function(pca, x, x_std, mu_x, sigma_x, k){
 x_projected =  x_std%*%pca[, 1:k]%>%as.tibble()
@@ -924,19 +909,117 @@ return(list(x = x_projected, mse = mse))
 }
 
 pca_mse = rep(NA, 20)
-for(k in 1:20){
- pca_mse[k] = pca_stats(eigenvectors,train_X_continous_oversampled, train_X_continous_std_oversampled, mu_x_continous_oversampled,     sigma_x_continous_oversampled, k)$mse
+for(k in 1:26){
+ pca_mse[k] = pca_stats(eigenvectors,training_data_x_std_smote, training_data_x_std_smote, mu_training_data_smote,     sigma_training_data_smote, k)$mse
 
 }
 
 
 
-df <- data.frame(k = c(1:20, 1:5, 1:5), mse = c(pca_mse, autoencoder_mse, vae_mse), method = c(rep("pca", 20), rep("autoencoder", 5),rep("VAE", 5)))
-ggplot(df, aes(x = k, y = mse, col = method)) + geom_line()
+df <- data.frame(k = c(1:26, 1:12, 1:12), mse = c(pca_mse, autoencoder_mse, vae_mse), method = c(rep("PCA", 26), rep("Autoencoder", 12),rep("VAE", 12)))
+ggplot(df, aes(x = k, y = mse, col = method))+ 
+  geom_line()+
+  labs(x = "Latent Space Dimension (k)", y = "MSE", title = "Dimension Reduction Techniques MSE")+
+  theme_minimal()
 
 ```
 
+# Customer Segements
 
+## K-Means Clustering
+
+### Building Customer Segments
+
+### PCA Customer Segments
+
+```{r, echo=FALSE}
+# Load necessary library
+library(stats)
+
+
+# Determine optimal number of clusters using Elbow Method
+set.seed(10032024)
+wcss <- numeric()
+for (i in 1:10) {
+  kmeans_result <- kmeans(pca_scores[,14], centers = i, nstart = 25)
+  wcss[i] <- kmeans_result$tot.withinss
+}
+
+# # Plotting the Elbow Plot
+# plot(1:10, wcss, type = "b", xlab = "Number of Clusters", ylab = "WCSS",
+#      main = "Elbow Method for Determining Optimal Number of Clusters")
+
+wcss_df <- data.frame(Clusters = 1:10, WCSS = wcss)
+
+ggplot(wcss_df, aes(x = Clusters, y = WCSS)) +
+  geom_line() + 
+  geom_point() +
+  scale_x_continuous(breaks = 1:10) + # Ensure integer scale for clusters
+  theme_minimal() +
+  labs(title = "Elbow Method for Determining Optimal Number of Clusters - PCA",
+       x = "Number of Clusters",
+       y = "Within-Cluster Sum of Squares (WCSS)")
+
+# From the elbow we choose 3 clusters.
+
+kmeans_result <- kmeans(pca_scores[,14], centers = 3, nstart = 25)
+
+# credit_data_pca_segmentation = training_data_smote%>%
+#                                mutate(Cluster = as.factor(kmeans_result$cluster))
+# 
+# cluster_means <- credit_data_pca_segmentation %>% 
+#                  group_by(Cluster) %>%
+#                  summarise_all(funs(mean(. , na.rm = TRUE)))
+# 
+# ggplot(cluster_means, aes(x = Cluster, y = LIMIT_BAL, fill = Cluster)) +
+#   geom_bar(stat = "identity") +
+#   theme_minimal() +
+#   labs(title = "Average Credit Limit by Cluster", x = "Cluster", y = "Average Credit Limit")
+
+credit_data_pca_segmentation <- training_data_smote %>%
+  mutate(
+    # Calculate credit utilization
+    Avg_Utilization = rowMeans(select(., starts_with("BILL_AMT")) / LIMIT_BAL),
+    # Count the number of late payments
+    Num_Late_Payments = select(., starts_with("PAY_")) %>% apply(1, function(x) sum(x > 0)),
+    # Determine risk level
+    Risk_Level = case_when(
+      Num_Late_Payments == 0 & Avg_Utilization <= 0.30 ~ "Low Risk",
+      Num_Late_Payments <= 2 & Avg_Utilization > 0.30 & Avg_Utilization <= 0.75 ~ "Medium Risk",
+      TRUE ~ "High Risk"
+    ),
+    # Add the cluster assignments
+    Cluster = as.factor(kmeans_result$cluster) # This should be the cluster assignments from your k-means clustering
+  )
+
+credit_data_pca_segmentation$Risk_Level <- factor(credit_data_pca_segmentation$Risk_Level, levels = c("High Risk", "Medium Risk", "Low Risk"))
+
+cluster_risk_summary <- credit_data_pca_segmentation %>%
+  group_by(Cluster, Risk_Level) %>%
+  summarise(
+    Count = n(),
+    Avg_Credit_Limit = mean(LIMIT_BAL, na.rm = TRUE),
+    Avg_Utilization = mean(Avg_Utilization, na.rm = TRUE),
+    Avg_Late_Payments = mean(Num_Late_Payments, na.rm = TRUE)
+  )
+
+
+
+risk_level_summary <- credit_data_pca_segmentation %>%
+  count(Cluster, Risk_Level) %>%
+  mutate(Risk_Level = factor(Risk_Level, levels = c("High Risk", "Medium Risk", "Low Risk"))) %>%
+  arrange(Cluster, desc(Risk_Level)) # Ensure the order is High, Medium, Low
+
+# Plot using ggplot2
+ggplot(risk_level_summary, aes(x = Cluster, y = n, fill = Risk_Level)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Credit Risk Level Segments within Each Cluster",
+       x = "Cluster",
+       y = "No of customers",
+       fill = "Credit Risk Level") +
+  scale_fill_brewer(palette = "Set1", labels = c("High", "Medium", "Low")) # Set custom labels for the legend
+```
 # Model Engineering
 
 
@@ -946,54 +1029,55 @@ ggplot(df, aes(x = k, y = mse, col = method)) + geom_line()
 ## Support Vector Machines
 
 ```{r, echo=FALSE}
-objects_to_keep <- c("credit_default_data", 
-                     "training_data",
-                     "validation_data",
-                     "testing_data",
-                     "train_X_continous",
-                     "validation_X_continous",
-                     "test_X_continous",
-                     "mu_x_continous",
-                     "sigma_x_continous",
-                     "train_X_continous_oversampled",
-                     "train_X_continous_std_oversampled",
-                     "mu_x_continous_oversampled",
-                     "sigma_x_continous_oversampled",
-                     "pca_scores",
-                     "eigenvectors",
-                     "input_layer",
-                     "encoder",
-                     "autoencoder_model",
-                     "autoencoder_weights",
-                     "autoencoder_mse",
-                     "vae_mse"
-                     )
-rm(list = setdiff(ls(), objects_to_keep))
+# objects_to_keep <- c("credit_default_data", 
+#                      "training_data",
+#                      "validation_data",
+#                      "testing_data",
+#                      "train_X_continous",
+#                      "validation_X_continous",
+#                      "test_X_continous",
+#                      "mu_x_continous",
+#                      "sigma_x_continous",
+#                      "train_X_continous_oversampled",
+#                      "train_X_continous_std_oversampled",
+#                      "mu_x_continous_oversampled",
+#                      "sigma_x_continous_oversampled",
+#                      "pca_scores",
+#                      "eigenvectors",
+#                      "input_layer",
+#                      "encoder",
+#                      "autoencoder_model",
+#                      "autoencoder_weights",
+#                      "autoencoder_mse",
+#                      "vae_mse"
+#                      )
+# rm(list = setdiff(ls(), objects_to_keep))
+# 
+# library(e1071)
+# 
+# svm_model = svm(DEFAULT_PAYMENT_NEXT_MONTH~ ., 
+#     data = training_data,
+#     type = "C-classification",
+#     kernel = "linear",
+#     scale = TRUE,
+#     cost = 2
+#     )
+# 
+# summary(svm_model)
+# 
+# 
+# 
+# #plot(svm_model, training_data)
+# 
+# svm_train_pred = predict(svm_model, training_data[, c(1:24)])
+# mean(svm_train_pred==as.numeric(as.matrix(training_data[,25])))
+# 
+# 
+# svm_train_pred = predict(svm_model, testing_data[, c(1:24)])
+# mean(svm_train_pred==as.numeric(as.matrix(testing_data[,25])))
 
-library(e1071)
-
-svm_model = svm(DEFAULT_PAYMENT_NEXT_MONTH~ ., 
-    data = training_data,
-    type = "C-classification",
-    kernel = "linear",
-    scale = TRUE,
-    cost = 2
-    )
-
-summary(svm_model)
-
-
-
-#plot(svm_model, training_data)
-
-svm_train_pred = predict(svm_model, training_data[, c(1:24)])
-mean(svm_train_pred==as.numeric(as.matrix(training_data[,25])))
-
-
-svm_train_pred = predict(svm_model, testing_data[, c(1:24)])
-mean(svm_train_pred==as.numeric(as.matrix(testing_data[,25])))
-
-
+autoencoder_mse
+vae_mse
 ```
 
 # Model Evaluation
