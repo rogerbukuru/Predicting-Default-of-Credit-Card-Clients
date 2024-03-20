@@ -964,17 +964,6 @@ ggplot(wcss_df, aes(x = Clusters, y = WCSS)) +
 
 kmeans_result <- kmeans(pca_scores[,14], centers = 3, nstart = 25)
 
-# credit_data_pca_segmentation = training_data_smote%>%
-#                                mutate(Cluster = as.factor(kmeans_result$cluster))
-# 
-# cluster_means <- credit_data_pca_segmentation %>% 
-#                  group_by(Cluster) %>%
-#                  summarise_all(funs(mean(. , na.rm = TRUE)))
-# 
-# ggplot(cluster_means, aes(x = Cluster, y = LIMIT_BAL, fill = Cluster)) +
-#   geom_bar(stat = "identity") +
-#   theme_minimal() +
-#   labs(title = "Average Credit Limit by Cluster", x = "Cluster", y = "Average Credit Limit")
 
 credit_data_pca_segmentation <- training_data_smote %>%
   mutate(
