@@ -520,14 +520,6 @@ variance_explained
 pca_scores =  t(tcrossprod(eigenvectors, training_data_x_std_smote)) %>% as.tibble()
 colnames(pca_scores) = colnames(eigenvectors)
 
-# Perform clustering on the latent space representations
-    num_clusters <- 5  # Specify the desired number of clusters
-    kmeans_result <- kmeans(pca_scores, centers = num_clusters)
-    # Assign colors to each cluster
-    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
-    point_colors <- cluster_colors[kmeans_result$cluster]
-scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
-              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = point_colors, cex.axis = 0.5)
 ```
 
 ```{r, echo = FALSE}
@@ -939,19 +931,19 @@ library(stats)
 
 # Determine optimal number of clusters using Elbow Method
 set.seed(10032024)
-wcss <- numeric()
+wcss_pca <- numeric()
 for (i in 1:10) {
-  kmeans_result <- kmeans(pca_scores[,14], centers = i, nstart = 25)
-  wcss[i] <- kmeans_result$tot.withinss
+  kmeans_result_pca <- kmeans(pca_scores[,14], centers = i, nstart = 25)
+  wcss_pca[i] <- kmeans_result_pca$tot.withinss
 }
 
 # # Plotting the Elbow Plot
 # plot(1:10, wcss, type = "b", xlab = "Number of Clusters", ylab = "WCSS",
 #      main = "Elbow Method for Determining Optimal Number of Clusters")
 
-wcss_df <- data.frame(Clusters = 1:10, WCSS = wcss)
+wcss_df_pca <- data.frame(Clusters = 1:10, WCSS = wcss_pca)
 
-ggplot(wcss_df, aes(x = Clusters, y = WCSS)) +
+ggplot(wcss_df_pca, aes(x = Clusters, y = WCSS)) +
   geom_line() + 
   geom_point() +
   scale_x_continuous(breaks = 1:10) + # Ensure integer scale for clusters
@@ -962,8 +954,12 @@ ggplot(wcss_df, aes(x = Clusters, y = WCSS)) +
 
 # From the elbow we choose 3 clusters.
 
-kmeans_result <- kmeans(pca_scores[,14], centers = 3, nstart = 25)
+kmeans_result_pca <- kmeans(pca_scores[,14], centers = 3, nstart = 25)
 
+cluster_colors_pca <- c("#0799BC", "#F98524", "#F1EA81")  # Specify colors for each cluster
+point_colors_pca <- cluster_colors_pca[kmeans_result_pca$cluster]
+scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
+              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = point_colors_pca, cex.axis = 0.5)
 
 credit_data_pca_segmentation <- training_data_smote %>%
   mutate(
@@ -978,12 +974,12 @@ credit_data_pca_segmentation <- training_data_smote %>%
       TRUE ~ "High Risk"
     ),
     # Add the cluster assignments
-    Cluster = as.factor(kmeans_result$cluster) # This should be the cluster assignments from your k-means clustering
+    Cluster = as.factor(kmeans_result_pca$cluster) # This should be the cluster assignments from your k-means clustering
   )
 
 credit_data_pca_segmentation$Risk_Level <- factor(credit_data_pca_segmentation$Risk_Level, levels = c("High Risk", "Medium Risk", "Low Risk"))
 
-cluster_risk_summary <- credit_data_pca_segmentation %>%
+cluster_risk_summary_pca <- credit_data_pca_segmentation %>%
   group_by(Cluster, Risk_Level) %>%
   summarise(
     Count = n(),
@@ -994,13 +990,13 @@ cluster_risk_summary <- credit_data_pca_segmentation %>%
 
 
 
-risk_level_summary <- credit_data_pca_segmentation %>%
+risk_level_summary_pca <- credit_data_pca_segmentation %>%
   count(Cluster, Risk_Level) %>%
   mutate(Risk_Level = factor(Risk_Level, levels = c("High Risk", "Medium Risk", "Low Risk"))) %>%
   arrange(Cluster, desc(Risk_Level)) # Ensure the order is High, Medium, Low
 
 # Plot using ggplot2
-ggplot(risk_level_summary, aes(x = Cluster, y = n, fill = Risk_Level)) +
+ggplot(risk_level_summary_pca, aes(x = Cluster, y = n, fill = Risk_Level)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_minimal() +
   labs(title = "Credit Risk Level Segments within Each Cluster",
@@ -1008,6 +1004,9 @@ ggplot(risk_level_summary, aes(x = Cluster, y = n, fill = Risk_Level)) +
        y = "No of customers",
        fill = "Credit Risk Level") +
   scale_fill_brewer(palette = "Set1", labels = c("High", "Medium", "Low")) # Set custom labels for the legend
+
+
+
 ```
 # Model Engineering
 
