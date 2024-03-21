@@ -788,10 +788,28 @@ ggplot(df, aes(x = k, y = mse, col = method))+
 ### PCA Customer Segments
 
 ```{r, echo=FALSE}
-# Load necessary library
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "testing_data",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
+                     "pca_scores",
+                     "eigenvectors",
+                     "autoencoder_mse",
+                     "vae_mse",
+                     "autoencoder_result",
+                     "vae_result"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+
 library(stats)
-
-
 # Determine optimal number of clusters using Elbow Method
 set.seed(10032024)
 wcss_pca <- numeric()
@@ -821,7 +839,7 @@ kmeans_result_pca <- kmeans(pca_scores[,14], centers = 3, nstart = 25)
 
 cluster_colors_pca <- c("#0799BC", "#F98524", "#F1EA81")  # Specify colors for each cluster
 point_colors_pca <- cluster_colors_pca[kmeans_result_pca$cluster]
-s3d_pca = scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components K-Means Clusters",
+s3d_pca = scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components 3D Embedding of K-Means Clusters",
               xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = point_colors_pca, cex.axis = 0.5)
 legend_position <- s3d_pca$xyz.convert(8, 1.0, -14.0)
 
@@ -885,6 +903,26 @@ scale_fill_manual(values=risk_colors)
 ## Autoencoders Customer Segments
 
 ```{r, echo = FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "testing_data",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
+                     "pca_scores",
+                     "eigenvectors",
+                     "autoencoder_mse",
+                     "vae_mse",
+                     "autoencoder_result",
+                     "vae_result"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
 
 ae_encoded_points = function(autoencoder_model, input_layer, encoder, code_size = 1, x_train){
   
@@ -1028,6 +1066,26 @@ ggplot(risk_level_summary_ae, aes(x = Cluster, y = n, fill = Risk_Level)) +
 #Variational Autoencoder Customer Segments
 
 ```{r, echo=FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "testing_data",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
+                     "pca_scores",
+                     "eigenvectors",
+                     "autoencoder_mse",
+                     "vae_mse",
+                     "autoencoder_result",
+                     "vae_result"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
 
 vae_encoded_points = function(vae_model,input_layer, z, latent_space_dim, x_train){
   
@@ -1076,23 +1134,23 @@ ggplot(wcss_df_vae, aes(x = Clusters, y = WCSS)) +
 
 # From the elbow we choose 3 clusters.
 
-kmeans_result_vae <- kmeans(encoded_points_vae, centers = 4, nstart = 25)
+kmeans_result_vae <- kmeans(encoded_points_vae, centers = 3, nstart = 25)
 
 
- cluster_colors_vae <- c("#0799BC", "#F98524", "#F1EA81", "darkgreen")  # Specify colors for each cluster
- point_colors_ae <- cluster_colors_vae[kmeans_result_vae$cluster]
+ cluster_colors_vae <- c("#0799BC", "#F98524", "#F1EA81")  # Specify colors for each cluster
+ point_colors_vae <- cluster_colors_vae[kmeans_result_vae$cluster]
  
- s3d_vae = scatterplot3d(x = encoded_points_vae$V1, y = encoded_points_vae$V2, z = encoded_points_vae$V3, main = "Variational Autoencoder 3D Embedding of K-Means Clusters", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors_ae, cex.axis = 0.5)
+ s3d_vae = scatterplot3d(x = encoded_points_vae$V1, y = encoded_points_vae$V2, z = encoded_points_vae$V3, main = "Variational Autoencoder 3D Embedding of K-Means Clusters", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors_vae, cex.axis = 0.5)
 # Add a legend
 # Adjust the position based on your plot's scale
 legend_position <- s3d_vae$xyz.convert(-0.05, 0.2, 0.15)
 
 # Assuming you have a way to relate cluster numbers to descriptive labels
-cluster_labels <- paste("Cluster", 1:length(cluster_colors_ae))
+cluster_labels <- paste("Cluster", 1:length(cluster_colors_vae))
 
 # Add the legend
 legend(legend_position$x, legend_position$y, legend = cluster_labels, 
-       col = cluster_colors_ae, pch = 19)
+       col = cluster_colors_vae, pch = 19)
 
 
 # library(plotly)
