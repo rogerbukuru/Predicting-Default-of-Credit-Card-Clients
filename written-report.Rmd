@@ -28,6 +28,9 @@ library(knitr)
 library(ggplot2)
 library(dplyr)
 library(psych)
+library(keras)
+library(stats)
+library(e1071)
 
 file_path = "./data/default of credit card clients.xls"
 
@@ -226,17 +229,6 @@ ggplot(credit_spending, aes(x = `Percentage Utilized`)) +
   theme_minimal() 
 ```
 
-## Normality Check
-
-```{r, echo = FALSE}
-objects_to_keep <- c("credit_default_data","credit_default_data_2" )
-rm(list = setdiff(ls(), objects_to_keep))
-library(MVN)
-#mvn_result <- mvn(data = train_X_continous, mvnTest = "mardia")
-#print(mvn_result)
-
-#shapiro.test(train_X_continous$LIMIT_BAL[1:5000])
-```
 
 
 ## Correlation Analysis
@@ -404,7 +396,8 @@ testing_data_x = testing_data[, -27]
 mu_testing_data = apply(testing_data_x, 2, mean)
 sigma_testing_data = apply(testing_data_x, 2, sd)
 
-testing_data_x_std = as.matrix(apply(testing_data_x, 2, function(testing_data_x)((testing_data_x - mean(testing_data_x))/sd(testing_data_x))) %>% as.tibble())
+testing_data_x_std = as.matrix(apply(testing_data_x, 2, function(testing_data_x)((testing_data_x - mean(testing_data_x))/sd(testing_data_x))))%>%as_tibble()
+
 ```
 
 
@@ -513,7 +506,7 @@ ggplot(pca_data, mapping = aes(x = PCA, y = Variance.Explained)) +
      
 
 # Suggest that the first 4 PCA
-var_first_11 = sum(variance_explained[1:14])
+var_first_11 = sum(variance_explained[1:13])
 
 variance_explained
 
@@ -544,8 +537,6 @@ objects_to_keep <- c("credit_default_data",
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
-
-library(keras)
 
 train_autoencoder = function(epochs = 100, code_size = 1, x_train) {
   
@@ -595,14 +586,14 @@ autoencoder_mse = rep(NA, 5)
 
 autoencoder_result <- lapply(1:12, function(x) list(autoencoder_model = NA, input_layer = NA, encoder = NA))
 for(k in 1:12){
-  train_aem = train_autoencoder(epochs = 100, code_size = k, training_data_x_std_smote)
+  train_aem = train_autoencoder(epochs = 100, code_size = 12, training_data_x_std_smote)
   autoencoder_stats = evaluate(train_aem$autoencoder_model,
                                as.matrix(training_data_x_std_smote),
                                as.matrix(training_data_x_std_smote))
   autoencoder_mse[k] = autoencoder_stats["loss"]
-  autoencoder_result[[k]]$autoencoder_model = train_aem$autoencoder_model
-  autoencoder_result[[k]]$input_layer = train_aem$input_layer
-  autoencoder_result[[k]]$encoder = train_aem$encoder
+  autoencoder_result[[12]]$autoencoder_model = train_aem$autoencoder_model
+  autoencoder_result[[12]]$input_layer = train_aem$input_layer
+  autoencoder_result[[12]]$encoder = train_aem$encoder
 }
 autoencoder_mse
 
@@ -709,7 +700,7 @@ vae_result <- lapply(1:12, function(x) list(vae_model = NA, input_layer = NA, z 
 
 for(k in 1:12){
  train_vae_model = variational_autoencoder(
-                        latent_space_dim = k,
+                        latent_space_dim = 12,
                         batch_size = 256,
                         x_train = as.matrix(training_data_x_std_smote),
                         epochs = 100
@@ -720,9 +711,9 @@ for(k in 1:12){
    as.matrix(training_data_x_std_smote)
    )
  vae_mse[k] = vae_stats["loss"]
- vae_result[[k]]$vae_model = train_vae_model$vae_model
- vae_result[[k]]$input_layer = train_vae_model$input_layer
- vae_result[[k]]$z = train_vae_model$z
+ vae_result[[12]]$vae_model = train_vae_model$vae_model
+ vae_result[[12]]$input_layer = train_vae_model$input_layer
+ vae_result[[12]]$z = train_vae_model$z
 }
 
 vae_mse
@@ -777,6 +768,9 @@ ggplot(df, aes(x = k, y = mse, col = method))+
   labs(x = "Latent Space Dimension (k)", y = "MSE", title = "Dimension Reduction Techniques MSE")+
   theme_minimal()
 
+pca_mse
+autoencoder_mse
+vae_mse
 ```
 
 # Customer Segements
@@ -808,13 +802,11 @@ objects_to_keep <- c("credit_default_data",
                      "vae_result"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
-
-library(stats)
 # Determine optimal number of clusters using Elbow Method
 set.seed(10032024)
 wcss_pca <- numeric()
 for (i in 1:10) {
-  kmeans_result_pca <- kmeans(pca_scores[,14], centers = i, nstart = 25)
+  kmeans_result_pca <- kmeans(pca_scores[,13], centers = i, nstart = 25)
   wcss_pca[i] <- kmeans_result_pca$tot.withinss
 }
 
@@ -835,7 +827,7 @@ ggplot(wcss_df_pca, aes(x = Clusters, y = WCSS)) +
 
 # From the elbow we choose 3 clusters.
 
-kmeans_result_pca <- kmeans(pca_scores[,14], centers = 3, nstart = 25)
+kmeans_result_pca <- kmeans(pca_scores[,13], centers = 3, nstart = 25)
 
 cluster_colors_pca <- c("#0799BC", "#F98524", "#F1EA81")  # Specify colors for each cluster
 point_colors_pca <- cluster_colors_pca[kmeans_result_pca$cluster]
@@ -1215,66 +1207,212 @@ ggplot(risk_level_summary_vae, aes(x = Cluster, y = n, fill = Risk_Level)) +
 
 ```
 
-# Model Engineering
+# Predicting Credit Card Defaults
 
-
-
-## Linear Discriminant Analysis
 
 ## Support Vector Machines
 
-```{r, echo=FALSE}
-# objects_to_keep <- c("credit_default_data", 
-#                      "training_data",
-#                      "validation_data",
-#                      "testing_data",
-#                      "train_X_continous",
-#                      "validation_X_continous",
-#                      "test_X_continous",
-#                      "mu_x_continous",
-#                      "sigma_x_continous",
-#                      "train_X_continous_oversampled",
-#                      "train_X_continous_std_oversampled",
-#                      "mu_x_continous_oversampled",
-#                      "sigma_x_continous_oversampled",
-#                      "pca_scores",
-#                      "eigenvectors",
-#                      "input_layer",
-#                      "encoder",
-#                      "autoencoder_model",
-#                      "autoencoder_weights",
-#                      "autoencoder_mse",
-#                      "vae_mse"
-#                      )
-# rm(list = setdiff(ls(), objects_to_keep))
-# 
-# library(e1071)
-# 
-# svm_model = svm(DEFAULT_PAYMENT_NEXT_MONTH~ ., 
-#     data = training_data,
-#     type = "C-classification",
-#     kernel = "linear",
-#     scale = TRUE,
-#     cost = 2
-#     )
-# 
-# summary(svm_model)
-# 
-# 
-# 
-# #plot(svm_model, training_data)
-# 
-# svm_train_pred = predict(svm_model, training_data[, c(1:24)])
-# mean(svm_train_pred==as.numeric(as.matrix(training_data[,25])))
-# 
-# 
-# svm_train_pred = predict(svm_model, testing_data[, c(1:24)])
-# mean(svm_train_pred==as.numeric(as.matrix(testing_data[,25])))
+### SVM with PCA
 
-autoencoder_mse
-vae_mse
+```{r, echo=FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "testing_data",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
+                     "pca_scores",
+                     "eigenvectors",
+                     "autoencoder_mse",
+                     "vae_mse",
+                     "autoencoder_result",
+                     "vae_result",
+                     "ae_encoded_points",
+                     "vae_encoded_points",
+                     "encoded_points_ae",
+                     "encoded_points_vae"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+
+# tune_range_pca <- list(gamma = 2^(seq(-15, 3, by = 2)), cost = 2^(seq(-5, 15, by = 2)))
+# 
+# tune_result_pca <- tune("svm", 
+#                         train.x = pca_scores[,13], 
+#                         train.y = training_data_smote$DEFAULT_PAYMENT_NEXT_MONTH,
+#                         kernel = "radial",
+#                         ranges = tune_range_pca,
+#                         cross = 5
+#                     )
+# 
+# # View the best parameters
+# best_C_pca <- tune_result_pca$best.parameters$C
+# best_gamma_pca <- tune_result_pca$best.parameters$gamma
+# cat("Best C:", best_C_pca, "\n")
+# cat("Best Gamma:", best_gamma_pca, "\n")
+
+
+svm_model_pca = svm(
+    x = pca_scores[,13], 
+    y = training_data_smote$DEFAULT_PAYMENT_NEXT_MONTH,
+    type = "C-classification",
+    kernel = "radial",
+    cost = 2,
+    gamma = 0.1,
+    scale = FALSE,
+    )
+
+summary(svm_model_pca)
+
+test_data_sigma_matrix   = cov(testing_data_x_std)
+test_data_eigen_decomp   = eigen(test_data_sigma_matrix)
+
+test_data_eigenvalues   = test_data_eigen_decomp$values 
+test_data_eigenvectors  = as.matrix(test_data_eigen_decomp$vectors)
+
+test_data_pca_scores =  t(tcrossprod(test_data_eigenvectors, as.matrix(testing_data_x_std))) %>% as.tibble()
+
+svm_test_predict_pca = predict(svm_model_pca, test_data_pca_scores[,13])
+svm_pca_accuracy = mean(svm_test_predict_pca==as.numeric(as.matrix(testing_data[,27])))
+svm_pca_accuracy
+
 ```
 
+## SVM with Autoencoders
+
+```{r, echo=FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "testing_data",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
+                     "pca_scores",
+                     "eigenvectors",
+                     "autoencoder_mse",
+                     "vae_mse",
+                     "autoencoder_result",
+                     "vae_result",
+                     "ae_encoded_points",
+                     "vae_encoded_points",
+                     "encoded_points_ae",
+                     "encoded_points_vae",
+                     "svm_pca_accuracy"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+
+training_encoded_points_ae_12D = ae_encoded_points(
+  autoencoder_result[[12]]$autoencoder_model,
+  autoencoder_result[[12]]$input_layer,
+  autoencoder_result[[12]]$encoder,
+  code_size = 12,
+  training_data_x_std_smote)
+
+testing_encoded_points_ae_12D = ae_encoded_points(
+  autoencoder_result[[12]]$autoencoder_model,
+  autoencoder_result[[12]]$input_layer,
+  autoencoder_result[[12]]$encoder,
+  code_size = 12,
+  testing_data_x_std)
+
+svm_model_ae = svm(
+    x = training_encoded_points_ae_12D, 
+    y = training_data_smote$DEFAULT_PAYMENT_NEXT_MONTH,
+    type = "C-classification",
+    kernel = "radial",
+    cost = 2,
+    gamma = 0.1,
+    scale = FALSE,
+    )
+
+summary(svm_model_ae)
+
+
+svm_test_predict_ae = predict(svm_model_ae, testing_encoded_points_ae_12D)
+svm_ae_accuracy = mean(svm_test_predict_ae==as.numeric(as.matrix(testing_data[,27])))
+svm_ae_accuracy
+
+```
+
+
+
+
+## SVMs with Variational Autoencoder
+
+
+```{r, echo=FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "testing_data",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
+                     "pca_scores",
+                     "eigenvectors",
+                     "autoencoder_mse",
+                     "vae_mse",
+                     "autoencoder_result",
+                     "vae_result",
+                      "ae_encoded_points",
+                     "vae_encoded_points",
+                     "encoded_points_ae",
+                     "encoded_points_vae",
+                     "svm_pca_accuracy",
+                     "svm_ae_accuracy"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+
+training_encoded_points_vae_12D = vae_encoded_points(
+  vae_result[[12]]$vae_model,
+  vae_result[[12]]$input_layer,
+  vae_result[[12]]$z,
+  latent_space_dim = 12,
+  training_data_x_std_smote)
+
+testing_encoded_points_vae_12D = vae_encoded_points(
+  vae_result[[12]]$vae_model,
+  vae_result[[12]]$input_layer,
+  vae_result[[12]]$z,
+  latent_space_dim = 12,
+  as.matrix(testing_data_x_std))
+
+svm_model_vae = svm(
+    x = training_encoded_points_vae_12D, 
+    y = training_data_smote$DEFAULT_PAYMENT_NEXT_MONTH,
+    type = "C-classification",
+    kernel = "radial",
+    cost = 2,
+    gamma = 0.1,
+    scale = FALSE,
+    )
+
+summary(svm_model_vae)
+
+
+svm_test_predict_vae = predict(svm_model_vae, testing_encoded_points_vae_12D)
+svm_vae_accuracy = mean(svm_test_predict_vae==as.numeric(as.matrix(testing_data[,27])))
+
+```
+
+
+```
 # Model Evaluation
 
 ## Conclusion
