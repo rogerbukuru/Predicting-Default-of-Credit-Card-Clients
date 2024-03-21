@@ -703,41 +703,6 @@ visual_vae_latent_data(latent_space_dim,input_layer, z, x_train, vae_model)
 return(list(vae_model = vae_model))
 }
 
-visual_vae_latent_data = function(latent_space_dim,input_layer, z, x_train, vae_model){
-  if(latent_space_dim >3){
-  return(NULL)
-}
-  vae_weights = 
-  vae_model %>%
-  get_weights()
-  
-  file_name = paste("vae_weights", latent_space_dim, sep = "-")
-  save_model_weights_hdf5(object = vae_model,filepath = paste0("./data/", file_name, ".hdf5"),overwrite = TRUE)
-  
-  encoder_model   = keras_model(inputs = input_layer, outputs = z, name = "encoder_model")
-  encoder_model %>% load_model_weights_hdf5(filepath = paste0("./data/", file_name, ".hdf5"),skip_mismatch = TRUE,by_name = TRUE)
-  
-  embedded_points = predict(encoder_model, x_train)%>% as.tibble()
-  if(latent_space_dim == 1){
-    plot(embedded_points$V1)
-  }else if(latent_space_dim == 2){
-        plot(embedded_points$V1, embedded_points$V2)
-    
-  }else if(latent_space_dim == 3){
-    # Perform clustering on the latent space representations
-    num_clusters <- 5  # Specify the desired number of clusters
-    kmeans_result <- kmeans(embedded_points, centers = num_clusters)
-    # Assign colors to each cluster
-    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
-    point_colors <- cluster_colors[kmeans_result$cluster]
-    
-     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Variational Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors, cex.axis = 0.5)
-  }else {
-    print("Cannot visualize higher than 3-D")
-  }
-}
-
-
 
 vae_mse = rep(NA, 5)
 
@@ -899,15 +864,16 @@ risk_level_summary_pca <- credit_data_pca_segmentation %>%
 ggplot(risk_level_summary_pca, aes(x = Cluster, y = n, fill = Risk_Level)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_minimal() +
-  labs(title = "Credit Risk Level Segments within Each Cluster",
+  labs(title = "Credit Risk Level Segments within Each Cluster - PCA",
        x = "Cluster",
        y = "No of customers",
-       fill = "Credit Risk Level") +
+       fill = "Credit Default Risk Level") +
   scale_fill_brewer(palette = "Set1", labels = c("High", "Medium", "Low")) # Set custom labels for the legend
 
 
 
 ```
+
 
 ## Autoencoders Customer Segements
 
@@ -973,7 +939,7 @@ ggplot(wcss_df_ae, aes(x = Clusters, y = WCSS)) +
 kmeans_result_ae <- kmeans(encoded_points, centers = 3, nstart = 25)
 
 
- cluster_colors_ae <- c("#0799BC", "#F98524", "#F1EA81") #"#F1EA81","#222222")  # Specify colors for each cluster
+ cluster_colors_ae <- c("#0799BC", "#F98524", "#F1EA81")#, "#222222")  # Specify colors for each cluster
  point_colors_ae <- cluster_colors_ae[kmeans_result_ae$cluster]
  
  s3d = scatterplot3d(x = encoded_points$V1, y = encoded_points$V2, z = encoded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors_ae, cex.axis = 0.5)
@@ -1048,9 +1014,48 @@ ggplot(risk_level_summary_ae, aes(x = Cluster, y = n, fill = Risk_Level)) +
   labs(title = "Credit Risk Level Segments within Each Cluster - Autoencoder",
        x = "Cluster",
        y = "No of customers",
-       fill = "Credit Risk Level") +
+       fill = "Credit Default Risk Level") +
   scale_fill_brewer(palette = "Set1", labels = c("High", "Medium", "Low")) # Set custom labels for the legend
 
+```
+
+
+#Variational Autoencoder Customer Segments
+
+```{r, echo=FALSE}
+visual_vae_latent_data = function(latent_space_dim,input_layer, z, x_train, vae_model){
+  if(latent_space_dim >3){
+  return(NULL)
+}
+  vae_weights = 
+  vae_model %>%
+  get_weights()
+  
+  file_name = paste("vae_weights", latent_space_dim, sep = "-")
+  save_model_weights_hdf5(object = vae_model,filepath = paste0("./data/", file_name, ".hdf5"),overwrite = TRUE)
+  
+  encoder_model   = keras_model(inputs = input_layer, outputs = z, name = "encoder_model")
+  encoder_model %>% load_model_weights_hdf5(filepath = paste0("./data/", file_name, ".hdf5"),skip_mismatch = TRUE,by_name = TRUE)
+  
+  embedded_points = predict(encoder_model, x_train)%>% as.tibble()
+  if(latent_space_dim == 1){
+    plot(embedded_points$V1)
+  }else if(latent_space_dim == 2){
+        plot(embedded_points$V1, embedded_points$V2)
+    
+  }else if(latent_space_dim == 3){
+    # Perform clustering on the latent space representations
+    num_clusters <- 5  # Specify the desired number of clusters
+    kmeans_result <- kmeans(embedded_points, centers = num_clusters)
+    # Assign colors to each cluster
+    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
+    point_colors <- cluster_colors[kmeans_result$cluster]
+    
+     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Variational Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors, cex.axis = 0.5)
+  }else {
+    print("Cannot visualize higher than 3-D")
+  }
+}
 ```
 
 # Model Engineering
