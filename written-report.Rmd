@@ -850,8 +850,16 @@ kmeans_result_pca <- kmeans(pca_scores[,14], centers = 3, nstart = 25)
 
 cluster_colors_pca <- c("#0799BC", "#F98524", "#F1EA81")  # Specify colors for each cluster
 point_colors_pca <- cluster_colors_pca[kmeans_result_pca$cluster]
-scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
+s3d = scatterplot3d(x = pca_scores$PC1, y = pca_scores$PC2, z = pca_scores$PC3, main = "Principal Components",
               xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = point_colors_pca, cex.axis = 0.5)
+legend_position <- s3d$xyz.convert(8, 1.0, -14.0)
+
+# Assuming you have a way to relate cluster numbers to descriptive labels
+cluster_labels <- paste("Cluster", 1:length(cluster_colors_ae))
+# Add the legend
+legend(legend_position$x, legend_position$y, legend = cluster_labels, 
+       col = cluster_colors_ae, pch = 19)
+
 
 credit_data_pca_segmentation <- training_data_smote %>%
   mutate(
@@ -931,9 +939,9 @@ return(encoded_points)
 }
 
 encoded_points = ae_encoded_points(
-  autoencoder_result[[1]]$autoencoder_model,
-  autoencoder_result[[1]]$input_layer,
-  autoencoder_result[[1]]$encoder,
+  autoencoder_result[[12]]$autoencoder_model,
+  autoencoder_result[[12]]$input_layer,
+  autoencoder_result[[12]]$encoder,
   code_size = 1,
   training_data_x_std_smote)
 
@@ -965,12 +973,39 @@ ggplot(wcss_df_ae, aes(x = Clusters, y = WCSS)) +
 kmeans_result_ae <- kmeans(encoded_points, centers = 3, nstart = 25)
 
 
- cluster_colors_ae <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
+ cluster_colors_ae <- c("#0799BC", "#F98524", "#F1EA81") #"#F1EA81","#222222")  # Specify colors for each cluster
  point_colors_ae <- cluster_colors_ae[kmeans_result_ae$cluster]
  
- scatterplot3d(x = encoded_points$V1, y = encoded_points$V2, z = encoded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors_ae, cex.axis = 0.5)
+ s3d = scatterplot3d(x = encoded_points$V1, y = encoded_points$V2, z = encoded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors_ae, cex.axis = 0.5)
+# Add a legend
+# Adjust the position based on your plot's scale
+legend_position <- s3d$xyz.convert(1.7, 1.0, -1.0)
 
- 
+# Assuming you have a way to relate cluster numbers to descriptive labels
+cluster_labels <- paste("Cluster", 1:length(cluster_colors_ae))
+
+# Add the legend
+legend(legend_position$x, legend_position$y, legend = cluster_labels, 
+       col = cluster_colors_ae, pch = 19)
+
+
+
+
+
+
+# library(plotly)
+# 
+# # Assuming 'encoded_points' is your data frame and 'point_colors_ae' are the colors assigned to each point based on cluster
+# # Create a 3D scatter plot using plotly
+# plot_ly(data = encoded_points, x = ~V1, y = ~V2, z = ~V3, type = 'scatter3d', mode = 'markers',
+#         marker = list(size = 5, color = point_colors_ae)) %>%
+#   layout(title = "Autoencoder 3D Embedding",
+#          scene = list(xaxis = list(title = "Dim 1"),
+#                       yaxis = list(title = "Dim 2"),
+#                       zaxis = list(title = "Dim 3")),
+#          legend = list(title = list(text = "Clusters")))
+
+
  
  credit_data_ae_segmentation <- training_data_smote %>%
   mutate(
@@ -1010,7 +1045,7 @@ risk_level_summary_ae <- credit_data_ae_segmentation %>%
 ggplot(risk_level_summary_ae, aes(x = Cluster, y = n, fill = Risk_Level)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_minimal() +
-  labs(title = "Credit Risk Level Segments within Each Cluster",
+  labs(title = "Credit Risk Level Segments within Each Cluster - Autoencoder",
        x = "Cluster",
        y = "No of customers",
        fill = "Credit Risk Level") +
