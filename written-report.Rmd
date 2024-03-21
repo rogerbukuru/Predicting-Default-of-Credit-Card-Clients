@@ -522,48 +522,6 @@ colnames(pca_scores) = colnames(eigenvectors)
 
 ```
 
-```{r, echo = FALSE}
-objects_to_keep <- c("credit_default_data", 
-                     "training_data",
-                     "testing_data",
-                     "training_data_x",
-                     "training_data_x_std",
-                     "testing_data_x",
-                     "testing_data_x_std",
-                     "training_data_smote",
-                     "training_data_x_smote",
-                     "training_data_x_std_smote",
-                     "mu_training_data_smote",
-                     "sigma_training_data_smote",
-                     "pca_scores",
-                     "eigenvectors"
-                     )
-rm(list = setdiff(ls(), objects_to_keep))
-
-classic_pca = prcomp(training_data_x_std_smote, retx = TRUE, center = FALSE, scale. = FALSE)
-eigenvalues = classic_pca$sdev^2
-total_variance = sum(eigenvalues)
-variance_explained = eigenvalues/total_variance
-pca_data = data.frame(PCA = 1:nrow(classic_pca$rotation), `Variance Explained` = variance_explained)
-
-# Suggest that the first 4 PCA
-var_first_11 = sum(variance_explained[1:11])
-
-var_first_11
-# Scree Plot
-ggplot(pca_data, mapping = aes(x = PCA, y = Variance.Explained)) +
-      geom_point() +
-      geom_line()
-
-    num_clusters <- 5  # Specify the desired number of clusters
-    kmeans_result <- kmeans(pca_scores, centers = num_clusters)
-    # Assign colors to each cluster
-    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
-    point_colors <- cluster_colors[kmeans_result$cluster]
-scatterplot3d(x = classic_pca$x[,1], y = classic_pca$x[,2], z = classic_pca$x[,3], main = "Principal Components",
-              xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = point_colors, cex.axis = 0.5)
-```
-
 
 ### Autoencoders
 
@@ -630,89 +588,23 @@ summary(autoencoder_model)
              #validation_data = list(as.matrix(validation_X_continous_std), as.matrix(validation_X_continous_std))
              )
   plot(auto_associative)
-  if(code_size >= 1 & code_size <=3){
-  visualize_compressed_data(autoencoder_model,input_layer, encoder, code_size,x_train)
-  }
-  return(list(aem = autoencoder_model))
+  return(list(autoencoder_model = autoencoder_model, input_layer = input_layer, encoder = encoder))
 }
 
-visualize_compressed_data = function(autoencoder_model, input_layer, encoder, code_size = 1, x_train){
-  
-if(code_size >3){
-  return(NULL)
-}
-autoencoder_weights = 
-  autoencoder_model %>%
-  get_weights()
-
-file_name = paste("autoencoder_weights", code_size, sep = "-")
-save_model_weights_hdf5(object = autoencoder_model,filepath = paste0("./data/", file_name, ".hdf5"),overwrite = TRUE)
-
-encoder_model <- keras_model(inputs = input_layer, outputs = encoder)
-
-encoder_model %>% load_model_weights_hdf5(filepath = paste0("./data/", file_name, ".hdf5"),skip_mismatch = TRUE,by_name = TRUE)
-
-encoder_model %>% compile(
-  loss='mean_squared_error',
-  optimizer='adam',
-  metrics = c('accuracy')
-)
-
-# Visualize how model has embedded data in 3-dimensions
-
-embedded_points = encoder_model %>%
-                  predict_on_batch(x = as.matrix(x_train)) %>%
-                  as.tibble()
-#plot(embedded_points$V1, embedded_points$V2)
-  if(code_size == 1){
-    plot(embedded_points$V1)
-  }else if(code_size == 2){
-        plot(embedded_points$V1, embedded_points$V2)
-    
-  }else if(code_size == 3){
-       # Perform clustering on the latent space representations
-    num_clusters <- 5  # Specify the desired number of clusters
-    kmeans_result <- kmeans(embedded_points, centers = num_clusters)
-    # Assign colors to each cluster
-    cluster_colors <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
-    point_colors <- cluster_colors[kmeans_result$cluster]
-    
-     scatterplot3d(x = embedded_points$V1, y = embedded_points$V2, z = embedded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors, cex.axis = 0.5)
-  }else {
-    print("Cannot visualize higher than 3-D")
-  }
-}
 autoencoder_mse = rep(NA, 5)
 
-for(k in 1:1){
-  train_aem = train_autoencoder(epochs = 100, code_size = 3, training_data_x_std_smote)
-  autoencoder_stats = evaluate(train_aem$aem,as.matrix(training_data_x_std_smote),as.matrix(training_data_x_std_smote))
+autoencoder_result <- lapply(1:12, function(x) list(autoencoder_model = NA, input_layer = NA, encoder = NA))
+for(k in 1:12){
+  train_aem = train_autoencoder(epochs = 100, code_size = k, training_data_x_std_smote)
+  autoencoder_stats = evaluate(train_aem$autoencoder_model,
+                               as.matrix(training_data_x_std_smote),
+                               as.matrix(training_data_x_std_smote))
   autoencoder_mse[k] = autoencoder_stats["loss"]
+  autoencoder_result[[k]]$autoencoder_model = train_aem$autoencoder_model
+  autoencoder_result[[k]]$input_layer = train_aem$input_layer
+  autoencoder_result[[k]]$encoder = train_aem$encoder
 }
-
 autoencoder_mse
-
-```
-
-### Polynomial PCA
-
-```{r, echo=FALSE}
-
-# # Create polynomial features
-# df_poly <- train_X_continous_std_oversampled %>%as.tibble()%>%
-#   mutate(across(everything(), list(
-#     squared = ~ .^2
-#   )))
-# 
-# classic = prcomp(df_poly, retx = TRUE, center = FALSE, scale. = FALSE)
-# 
-# 
-# summary(classic)
-# #classic$rotation == eigenvectors
-# 
-# #classic$x
-# 
-# scatterplot3d(x = classic$rotation[,1], y = classic$rotation[,2], z = classic$rotation[,3], main = "Principal Components",xlab = "PC1", ylab = "PC2", zlab = "PC3", pch = 19, color = "blue", cex.axis = 0.5)
 
 ```
 
@@ -1008,6 +900,124 @@ ggplot(risk_level_summary_pca, aes(x = Cluster, y = n, fill = Risk_Level)) +
 
 
 ```
+
+## Autoencoders Customer Segements
+
+```{r, echo = FALSE}
+
+ae_encoded_points = function(autoencoder_model, input_layer, encoder, code_size = 1, x_train){
+  
+autoencoder_weights = 
+  autoencoder_model %>%
+  get_weights()
+
+file_name = paste("autoencoder_weights", code_size, sep = "-")
+save_model_weights_hdf5(object = autoencoder_model,filepath = paste0("./data/", file_name, ".hdf5"),overwrite = TRUE)
+
+encoder_model <- keras_model(inputs = input_layer, outputs = encoder)
+
+encoder_model %>% load_model_weights_hdf5(filepath = paste0("./data/", file_name, ".hdf5"),skip_mismatch = TRUE,by_name = TRUE)
+
+encoder_model %>% compile(
+  loss='mean_squared_error',
+  optimizer='adam',
+  metrics = c('accuracy')
+)
+
+encoded_points = encoder_model %>%
+                  predict_on_batch(x = as.matrix(x_train)) %>%
+                  as.tibble()
+return(encoded_points)
+}
+
+encoded_points = ae_encoded_points(
+  autoencoder_result[[1]]$autoencoder_model,
+  autoencoder_result[[1]]$input_layer,
+  autoencoder_result[[1]]$encoder,
+  code_size = 1,
+  training_data_x_std_smote)
+
+# Determine optimal number of clusters using Elbow Method
+set.seed(10032024)
+wcss_ae <- numeric()
+for (i in 1:10) {
+  kmeans_result_ae <- kmeans(encoded_points, centers = i, nstart = 25)
+  wcss_ae[i] <- kmeans_result_ae$tot.withinss
+}
+
+# # Plotting the Elbow Plot
+# plot(1:10, wcss, type = "b", xlab = "Number of Clusters", ylab = "WCSS",
+#      main = "Elbow Method for Determining Optimal Number of Clusters")
+
+wcss_df_ae <- data.frame(Clusters = 1:10, WCSS = wcss_ae)
+
+ggplot(wcss_df_ae, aes(x = Clusters, y = WCSS)) +
+  geom_line() + 
+  geom_point() +
+  scale_x_continuous(breaks = 1:10) + # Ensure integer scale for clusters
+  theme_minimal() +
+  labs(title = "Elbow Method for Determining Optimal Number of Clusters - Autoencoder",
+       x = "Number of Clusters",
+       y = "Within-Cluster Sum of Squares (WCSS)")
+
+# From the elbow we choose 3 clusters.
+
+kmeans_result_ae <- kmeans(encoded_points, centers = 3, nstart = 25)
+
+
+ cluster_colors_ae <- c("#0799BC", "darkgreen", "#F98524", "#F1EA81","#222222")  # Specify colors for each cluster
+ point_colors_ae <- cluster_colors_ae[kmeans_result_ae$cluster]
+ 
+ scatterplot3d(x = encoded_points$V1, y = encoded_points$V2, z = encoded_points$V3, main = "Autoencoder 3D Embedding", xlab = "Dim 1", ylab = "Dim 2", zlab = "Dim 3", pch = 19, color = point_colors_ae, cex.axis = 0.5)
+
+ 
+ 
+ credit_data_ae_segmentation <- training_data_smote %>%
+  mutate(
+    # Calculate credit utilization
+    Avg_Utilization = rowMeans(select(., starts_with("BILL_AMT")) / LIMIT_BAL),
+    # Count the number of late payments
+    Num_Late_Payments = select(., starts_with("PAY_")) %>% apply(1, function(x) sum(x > 0)),
+    # Determine risk level
+    Risk_Level = case_when(
+      Num_Late_Payments == 0 & Avg_Utilization <= 0.30 ~ "Low Risk",
+      Num_Late_Payments <= 2 & Avg_Utilization > 0.30 & Avg_Utilization <= 0.75 ~ "Medium Risk",
+      TRUE ~ "High Risk"
+    ),
+    # Add the cluster assignments
+    Cluster = as.factor(kmeans_result_ae$cluster) # This should be the cluster assignments from your k-means clustering
+  )
+
+credit_data_ae_segmentation$Risk_Level <- factor(credit_data_ae_segmentation$Risk_Level, levels = c("High Risk", "Medium Risk", "Low Risk"))
+
+cluster_risk_summary_ae <- credit_data_ae_segmentation %>%
+  group_by(Cluster, Risk_Level) %>%
+  summarise(
+    Count = n(),
+    Avg_Credit_Limit = mean(LIMIT_BAL, na.rm = TRUE),
+    Avg_Utilization = mean(Avg_Utilization, na.rm = TRUE),
+    Avg_Late_Payments = mean(Num_Late_Payments, na.rm = TRUE)
+  )
+
+
+
+risk_level_summary_ae <- credit_data_ae_segmentation %>%
+  count(Cluster, Risk_Level) %>%
+  mutate(Risk_Level = factor(Risk_Level, levels = c("High Risk", "Medium Risk", "Low Risk"))) %>%
+  arrange(Cluster, desc(Risk_Level)) # Ensure the order is High, Medium, Low
+
+# Plot using ggplot2
+ggplot(risk_level_summary_ae, aes(x = Cluster, y = n, fill = Risk_Level)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Credit Risk Level Segments within Each Cluster",
+       x = "Cluster",
+       y = "No of customers",
+       fill = "Credit Risk Level") +
+  scale_fill_brewer(palette = "Set1", labels = c("High", "Medium", "Low")) # Set custom labels for the legend
+
+```
+
 # Model Engineering
 
 
