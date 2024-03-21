@@ -31,6 +31,8 @@ library(psych)
 library(keras)
 library(stats)
 library(e1071)
+library(caret)
+library(pROC)
 
 file_path = "./data/default of credit card clients.xls"
 
@@ -1278,9 +1280,6 @@ test_data_eigenvectors  = as.matrix(test_data_eigen_decomp$vectors)
 test_data_pca_scores =  t(tcrossprod(test_data_eigenvectors, as.matrix(testing_data_x_std))) %>% as.tibble()
 
 svm_test_predict_pca = predict(svm_model_pca, test_data_pca_scores[,13])
-svm_pca_accuracy = mean(svm_test_predict_pca==as.numeric(as.matrix(testing_data[,27])))
-svm_pca_accuracy
-
 ```
 
 ## SVM with Autoencoders
@@ -1308,7 +1307,7 @@ objects_to_keep <- c("credit_default_data",
                      "vae_encoded_points",
                      "encoded_points_ae",
                      "encoded_points_vae",
-                     "svm_pca_accuracy"
+                     "svm_test_predict_pca"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
@@ -1340,8 +1339,7 @@ summary(svm_model_ae)
 
 
 svm_test_predict_ae = predict(svm_model_ae, testing_encoded_points_ae_12D)
-svm_ae_accuracy = mean(svm_test_predict_ae==as.numeric(as.matrix(testing_data[,27])))
-svm_ae_accuracy
+
 
 ```
 
@@ -1374,8 +1372,8 @@ objects_to_keep <- c("credit_default_data",
                      "vae_encoded_points",
                      "encoded_points_ae",
                      "encoded_points_vae",
-                     "svm_pca_accuracy",
-                     "svm_ae_accuracy"
+                     "svm_test_predict_pca",
+                     "svm_test_predict_ae"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
@@ -1407,13 +1405,83 @@ summary(svm_model_vae)
 
 
 svm_test_predict_vae = predict(svm_model_vae, testing_encoded_points_vae_12D)
-svm_vae_accuracy = mean(svm_test_predict_vae==as.numeric(as.matrix(testing_data[,27])))
 
 ```
 
-
-```
 # Model Evaluation
+
+```{r, echo=FALSE}
+objects_to_keep <- c("credit_default_data", 
+                     "training_data",
+                     "testing_data",
+                     "training_data_x",
+                     "training_data_x_std",
+                     "testing_data_x",
+                     "testing_data_x_std",
+                     "training_data_smote",
+                     "training_data_x_smote",
+                     "training_data_x_std_smote",
+                     "mu_training_data_smote",
+                     "sigma_training_data_smote",
+                     "pca_scores",
+                     "eigenvectors",
+                     "autoencoder_mse",
+                     "vae_mse",
+                     "autoencoder_result",
+                     "vae_result",
+                      "ae_encoded_points",
+                     "vae_encoded_points",
+                     "encoded_points_ae",
+                     "encoded_points_vae",
+                     "svm_test_predict_pca",
+                     "svm_test_predict_ae",
+                     "svm_test_predict_vae"
+                     )
+rm(list = setdiff(ls(), objects_to_keep))
+
+svm_metrics = function(confusion_matrix){
+precision = confusion_matrix$byClass['Pos Pred Value']
+recall    = confusion_matrix$byClass['Sensitivity']
+F1_score = 2 * (precision * recall) / (precision + recall)
+return (list(F1_score=F1_score, recall=recall, precision=precision))
+}
+
+svm_pca_accuracy = mean(svm_test_predict_pca==as.numeric(as.matrix(testing_data[,27])))
+confusion_matrix_pca = confusionMatrix(svm_test_predict_pca, testing_data$DEFAULT_PAYMENT_NEXT_MONTH)
+svm_metric_pca = svm_metrics(confusion_matrix_pca)
+roc_curve_pca <- roc(response = testing_data$DEFAULT_PAYMENT_NEXT_MONTH, predictor = as.numeric(svm_test_predict_pca))
+AUC_pca <- auc(roc_curve_pca)
+svm_pca_accuracy
+svm_metric_pca$recall
+svm_metric_pca$precision
+svm_metric_pca$F1_score
+AUC_pca
+
+svm_ae_accuracy = mean(svm_test_predict_ae==as.numeric(as.matrix(testing_data[,27])))
+confusion_matrix_ae = confusionMatrix(svm_test_predict_ae, testing_data$DEFAULT_PAYMENT_NEXT_MONTH)
+svm_metric_ae = svm_metrics(confusion_matrix_ae)
+roc_curve_ae <- roc(response = testing_data$DEFAULT_PAYMENT_NEXT_MONTH, predictor = as.numeric(svm_test_predict_ae))
+AUC_ae <- auc(roc_curve_ae)
+svm_ae_accuracy
+svm_metric_ae$recall
+svm_metric_ae$precision
+svm_metric_ae$F1_score
+AUC_ae
+
+
+svm_vae_accuracy = mean(svm_test_predict_vae==as.numeric(as.matrix(testing_data[,27])))
+confusion_matrix_vae = confusionMatrix(svm_test_predict_vae, testing_data$DEFAULT_PAYMENT_NEXT_MONTH)
+svm_metric_vae = svm_metrics(confusion_matrix_vae)
+roc_curve_vae <- roc(response = testing_data$DEFAULT_PAYMENT_NEXT_MONTH, predictor = as.numeric(svm_test_predict_vae))
+AUC_vae <- auc(roc_curve_vae)
+svm_vae_accuracy
+svm_metric_vae$recall
+svm_metric_vae$precision
+svm_metric_vae$F1_score
+AUC_vae
+
+```
+
 
 ## Conclusion
 
