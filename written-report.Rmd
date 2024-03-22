@@ -33,6 +33,7 @@ library(stats)
 library(e1071)
 library(caret)
 library(pROC)
+library(scatterplot3d)
 
 file_path = "./data/default of credit card clients.xls"
 
@@ -1099,10 +1100,10 @@ vae_encoded_points = function(vae_model,input_layer, z, latent_space_dim, x_trai
 }
 
 encoded_points_vae = vae_encoded_points(
-  vae_result[[3]]$vae_model,
-  vae_result[[3]]$input_layer,
-  vae_result[[3]]$z,
-  latent_space_dim = 3,
+  vae_result[[12]]$vae_model,
+  vae_result[[12]]$input_layer,
+  vae_result[[12]]$z,
+  latent_space_dim = 12,
   training_data_x_std_smote)
 
 # Determine optimal number of clusters using Elbow Method
@@ -1238,7 +1239,9 @@ objects_to_keep <- c("credit_default_data",
                      "ae_encoded_points",
                      "vae_encoded_points",
                      "encoded_points_ae",
-                     "encoded_points_vae"
+                     "encoded_points_vae",
+                     "credit_data_vae_segmentation",
+                     "kmeans_result_vae",
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
@@ -1307,6 +1310,8 @@ objects_to_keep <- c("credit_default_data",
                      "vae_encoded_points",
                      "encoded_points_ae",
                      "encoded_points_vae",
+                     "credit_data_vae_segmentation",
+                     "kmeans_result_vae",
                      "svm_test_predict_pca"
                      )
 rm(list = setdiff(ls(), objects_to_keep))
@@ -1372,6 +1377,8 @@ objects_to_keep <- c("credit_default_data",
                      "vae_encoded_points",
                      "encoded_points_ae",
                      "encoded_points_vae",
+                     "credit_data_vae_segmentation",
+                     "kmeans_result_vae",
                      "svm_test_predict_pca",
                      "svm_test_predict_ae"
                      )
@@ -1429,10 +1436,12 @@ objects_to_keep <- c("credit_default_data",
                      "vae_mse",
                      "autoencoder_result",
                      "vae_result",
-                      "ae_encoded_points",
+                     "ae_encoded_points",
                      "vae_encoded_points",
                      "encoded_points_ae",
                      "encoded_points_vae",
+                     "credit_data_vae_segmentation",
+                     "kmeans_result_vae",
                      "svm_test_predict_pca",
                      "svm_test_predict_ae",
                      "svm_test_predict_vae"
@@ -1482,6 +1491,80 @@ AUC_vae
 
 ```
 
+## VAE Segement SVM Predictions
+
+```{r, echo=FALSE}
+
+# Let's assume 'data_vae' contains your features transformed by VAE and 'clusters' is a vector of cluster assignments from k-means
+# Also, 'labels' is a vector containing the true classification labels for your dataset
+
+# Create a list to store SVM models, one for each cluster
+
+svm_models <- list()
+performance_metrics <- data.frame(Cluster = integer(),
+                                  Accuracy = numeric(),
+                                  Recall = numeric(),
+                                  Precision = numeric(),
+                                  F1_Score = numeric(),
+                                  AUC = numeric())
+
+# Loop through each cluster and train an SVM model
+clusters = kmeans_result_vae$cluster
+training_data_smote_with_clusters = training_data_smote%>%
+                               mutate(Cluster = clusters)
+training_labels = training_data_smote_with_clusters$DEFAULT_PAYMENT_NEXT_MONTH
+
+training_encoded_points_vae_12D_with_clusters = training_encoded_points_vae_12D%>%
+                                  mutate(Cluster = clusters)
+
+
+kmeans_test_data_result_vae <- kmeans(testing_encoded_points_vae_12D, centers = 3, nstart = 25)
+test_data_clusters = kmeans_test_data_result_vae$cluster
+testing_encoded_points_vae_12D_with_clusters = testing_encoded_points_vae_12D%>%
+                                  mutate(Cluster = test_data_clusters)
+testing_data_with_clusters = testing_data%>%
+                               mutate(Cluster = test_data_clusters)
+testing_labels = testing_data_with_clusters$DEFAULT_PAYMENT_NEXT_MONTH
+
+
+for (k in unique(clusters)) {
+  # Subset the data for cluster 'k'
+  cluster_data <- training_encoded_points_vae_12D_with_clusters[clusters == k, ]
+  cluster_labels <- training_labels[clusters == k]
+  cluster_test_labels <- testing_labels[test_data_clusters == k]
+  
+  # Train the SVM model
+  svm_models[[k]] <- svm(x = cluster_data[, -13], y = cluster_labels, kernel = "radial", cost = 2, gamma = 0.1)
+  
+  # Make predictions
+  cluster_test_data = testing_encoded_points_vae_12D_with_clusters[test_data_clusters == k, ]
+  predictions <- predict(svm_models[[k]], cluster_test_data[, -13])
+  
+  # Calculate performance metrics
+  cm <- confusionMatrix(predictions, as.factor(cluster_test_labels))
+  accuracy <- cm$overall['Accuracy']
+  recall <- cm$byClass['Sensitivity']
+  precision <- cm$byClass['Pos Pred Value']
+  F1_score <- 2 * (precision * recall) / (precision + recall)
+  
+  # Calculate AUC
+  roc_curve <- roc(response = as.numeric(as.factor(cluster_test_labels)), predictor = as.numeric(predictions))
+  auc_value <- auc(roc_curve)
+  
+  # Store the performance metrics
+  performance_metrics <- rbind(performance_metrics, data.frame(Cluster = k,
+                                                               Accuracy = accuracy,
+                                                               Recall = recall,
+                                                               Precision = precision,
+                                                               F1_Score = F1_score,
+                                                               AUC = auc_value))
+}
+
+# Display the performance metrics for each cluster
+print(performance_metrics)
+
+
+```
 
 ## Conclusion
 
