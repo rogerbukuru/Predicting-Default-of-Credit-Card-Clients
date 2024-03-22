@@ -1252,7 +1252,7 @@ objects_to_keep <- c("credit_default_data",
                      )
 rm(list = setdiff(ls(), objects_to_keep))
 
-# tune_range_pca <- list(gamma = 2^(seq(-15, 3, by = 2)), cost = 2^(seq(-5, 15, by = 2)))
+# tune_range_pca <- list(gamma = 2^(seq(-15, 3, by = 2)), cost = 100^(seq(-5, 15, by = 2)))
 # 
 # tune_result_pca <- tune("svm", 
 #                         train.x = pca_scores[,13], 
@@ -1274,7 +1274,7 @@ svm_model_pca = svm(
     y = training_data_smote$DEFAULT_PAYMENT_NEXT_MONTH,
     type = "C-classification",
     kernel = "radial",
-    cost = 2,
+    cost = 100,
     gamma = 0.1,
     scale = FALSE,
     )
@@ -1345,7 +1345,7 @@ svm_model_ae = svm(
     y = training_data_smote$DEFAULT_PAYMENT_NEXT_MONTH,
     type = "C-classification",
     kernel = "radial",
-    cost = 2,
+    cost = 100,
     gamma = 0.1,
     scale = FALSE,
     )
@@ -1418,7 +1418,7 @@ svm_model_vae = svm(
     y = training_data_smote$DEFAULT_PAYMENT_NEXT_MONTH,
     type = "C-classification",
     kernel = "radial",
-    cost = 2,
+    cost = 100,
     gamma = 0.1,
     scale = FALSE,
     )
@@ -1592,7 +1592,7 @@ for (k in unique(clusters_pca)) {
   cluster_test_labels_pca <- testing_labels_pca[test_data_clusters_pca == k]
   
   # Train the SVM model
-  svm_models_pca[[k]] <- svm(x = cluster_training_data_pca[, -c(14:27)], y = cluster_training_labels_pca, kernel = "radial", cost = 2, gamma = 0.1)
+  svm_models_pca[[k]] <- svm(x = cluster_training_data_pca[, -c(14:27)], y = cluster_training_labels_pca, kernel = "radial", cost = 100, gamma = 0.1)
   
   # Make predictions
   cluster_test_data_pca = testing_pca_scores_with_clusters[test_data_clusters_pca == k, ]
@@ -1700,7 +1700,7 @@ for (k in unique(clusters_ae)) {
   cluster_test_labels_ae <- testing_labels_ae[test_data_clusters_ae == k]
   
   # Train the SVM model
-  svm_models_ae[[k]] <- svm(x = cluster_training_data_ae[, -13], y = cluster_training_labels_ae, kernel = "radial", cost = 2, gamma = 0.1)
+  svm_models_ae[[k]] <- svm(x = cluster_training_data_ae[, -13], y = cluster_training_labels_ae, kernel = "radial", cost = 100, gamma = 0.1)
   
   # Make predictions
   cluster_test_data_ae = testing_encoded_points_ae_12D_with_clusters[test_data_clusters_ae == k, ]
@@ -1806,7 +1806,7 @@ for (k in unique(clusters)) {
   cluster_test_labels <- testing_labels[test_data_clusters == k]
   
   # Train the SVM model
-  svm_models[[k]] <- svm(x = cluster_training_data[, -13], y = cluster_training_labels, kernel = "radial", cost = 2, gamma = 0.1)
+  svm_models[[k]] <- svm(x = cluster_training_data[, -13], y = cluster_training_labels, kernel = "radial", cost = 100, gamma = 0.1)
   
   # Make predictions
   cluster_test_data = testing_encoded_points_vae_12D_with_clusters[test_data_clusters == k, ]
@@ -1861,7 +1861,7 @@ svm_model_vae_cluster_2_3 = svm(
     y = training_labels_cluster_2_3,
     type = "C-classification",
     kernel = "radial",
-    cost = 2,
+    cost = 100,
     gamma = 0.1,
     scale = FALSE,
     )
