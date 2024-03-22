@@ -1,4 +1,6 @@
-# Introduction
+# Predictive Modeling and Segmentation of Credit Card Default Risk
+
+## Introduction
 
 Banks are essential to the financial services industry because they provide their clients with credit and loans. These financial tools are essential for empowering customers financially as well as allowing banks to earn interest and generate additional revenue. However, the granting of credit and loans carries with it an inherent default risk, meaning that borrowers might not fulfil their repayment commitments.
 
@@ -8,7 +10,7 @@ There are two questions in the research. Its initial goal is to determine which 
 
 In order to improve customer segmentation, dimensionality reduction techniques such as PCA, AE, and VAE are being used to extract the key characteristics that affect credit default risk. This segmentation then forms the basis for predictive modelling, which allows for a more sophisticated evaluation of credit default risk.
 
-# Data Dictionary for Taiwan Credit Dataset
+## Data Dictionary for Taiwan Credit Dataset
 
 | Variable Name | Type    | Description                                                                                           | Categories/Scale                                          |
 |---------------|---------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
