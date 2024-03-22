@@ -1,4 +1,14 @@
-## Data Dictionary for Taiwan Credit Dataset
+# Introduction
+
+Banks are essential to the financial services industry because they provide their clients with credit and loans. These financial tools are essential for empowering customers financially as well as allowing banks to earn interest and generate additional revenue. However, the granting of credit and loans carries with it an inherent default risk, meaning that borrowers might not fulfil their repayment commitments.
+
+With an emphasis on a Taiwanese credit default dataset, this study aims to tackle the problem of credit risk management, specifically as it relates to credit card facilities. Finding the best effective dimensionality reduction method to use with k-means clustering among Principal Component Analysis (PCA), Autoencoders (AE), and Variational Autoencoders (VAE) is the main goal of our work.
+
+There are two questions in the research. Its initial goal is to determine which dimension reduction method best facilitates the creation of an elementary credit default risk segmentation model. This entails investigating the ways in which a customer's payment history, bill statement amounts, prior payment amounts, and demographic and financial behaviour traits—such as age, gender, education, marital status, and marriage status—can affect the probability of a credit default. The second portion of the study topic deals with the viability of creating a trustworthy default prediction model based on the best customer segmentation model that has been determined after a segmentation model has been established. Support Vector Machines (SVMs) will be utilized in order to build the predictive model.
+
+In order to improve customer segmentation, dimensionality reduction techniques such as PCA, AE, and VAE are being used to extract the key characteristics that affect credit default risk. This segmentation then forms the basis for predictive modelling, which allows for a more sophisticated evaluation of credit default risk.
+
+# Data Dictionary for Taiwan Credit Dataset
 
 | Variable Name | Type    | Description                                                                                           | Categories/Scale                                          |
 |---------------|---------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
